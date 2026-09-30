@@ -1,4 +1,4 @@
-# BPU26-C
+# BPU26
 
 ## 一丨分支规范 Branch Standard
 
