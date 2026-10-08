@@ -209,8 +209,11 @@ echo # empty > "%FAKE_SYSTEM%"
 set "GIT_CONFIG_GLOBAL=%FAKE_GLOBAL%"
 set "GIT_CONFIG_SYSTEM=%FAKE_SYSTEM%"
 
-set "EMPTY="
-git config --local credential.helper "%EMPTY%"
+@REM set "EMPTY="
+@REM git config --local credential.helper "%EMPTY%"
+@REM git config --local --add credential.helper "cache --timeout=120"
+
+git config --local --remove-section credential 2>nul
 git config --local --add credential.helper "cache --timeout=120"
 
 set "HOST="
