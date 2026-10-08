@@ -1,0 +1,9 @@
+{
+    // 全局默认编码保持 UTF-8
+    "files.encoding": "utf8",
+
+    // 为 bat 语言单独设置 GBK 编码
+    "[bat]": {
+        "files.encoding": "gbk"
+    }
+}
