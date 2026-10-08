@@ -12,7 +12,6 @@ setlocal enabledelayedexpansion
 
 cd /d "%~dp0"
 
-:: ---------- 参数解析 ----------
 if "%~1"=="?" goto :show_help
 if /i "%~1"=="-h" goto :show_help
 if /i "%~1"=="--help" goto :show_help
@@ -34,18 +33,17 @@ echo   close.bat ?            显示本帮助
 echo.
 echo 默认流程:
 echo   1. 检查工作区必须干净
-echo   2. 隐藏输入 PAT (仅存内存 120 秒)
+echo   2. 隐藏输入 PAT (临时文件, 跑完即删)
 echo   3. 切到 dev, pull rebase 同步
 echo   4. merge 临时分支到 dev
 echo   5. push dev 到 origin
 echo   6. 删除本地临时分支
-echo   7. 主动清空内存中的 PAT
+echo   7. 主动清空 PAT
 echo.
 echo -nomerge 说明:
-echo   - 直接删除当前分支, 该分支上未提交到 commit 的改动会丢失
+echo   - 直接删除当前分支, 该分支上未 commit 的改动会丢失
 echo   - 工作区里未提交的改动会继承到 dev
-echo   - 需要输入 DELETE 大写确认词
-echo   - 还需要输入 PAT 作为二次安全锁
+echo   - 需要输入 DELETE 大写确认词 + PAT 二次锁
 echo.
 pause
 exit /b 0
@@ -101,7 +99,6 @@ echo [OK] 二次确认通过。
 echo.
 goto :after_param
 
-:: ---------- 公共流程 ----------
 :after_param
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
@@ -143,7 +140,6 @@ echo   当前分支: %CURRENT%
 echo ============================================================
 echo.
 
-:: 脏检查: 仅默认模式需要
 if not defined NO_MERGE (
     set "DIRTY="
     for /f "delims=" %%u in ('git status --porcelain') do set "DIRTY=1"
@@ -160,7 +156,6 @@ if not defined NO_MERGE (
     echo [提示] nomerge 模式: 跳过脏检查, 未提交改动会继承到 dev。
 )
 
-:: ---------- nomerge 分支: 切到 dev, 未提交改动继承过去 ----------
 if defined NO_MERGE (
     echo.
     echo [信息] nomerge 模式: 切到 dev, 未提交改动会继承过去...
@@ -190,7 +185,7 @@ if defined NO_MERGE (
     exit /b 0
 )
 
-:: ---------- 默认模式: 完整流程 ----------
+:: ---------- 屏蔽全局/系统 helper ----------
 set "GIT_USER_NAME="
 set "GIT_USER_EMAIL="
 for /f "delims=" %%u in ('git config --global user.name 2^>nul') do set "GIT_USER_NAME=%%u"
@@ -209,12 +204,10 @@ echo # empty > "%FAKE_SYSTEM%"
 set "GIT_CONFIG_GLOBAL=%FAKE_GLOBAL%"
 set "GIT_CONFIG_SYSTEM=%FAKE_SYSTEM%"
 
-@REM set "EMPTY="
-@REM git config --local credential.helper "%EMPTY%"
-@REM git config --local --add credential.helper "cache --timeout=120"
-
+:: ---------- credential-store + 临时文件 ----------
 git config --local --remove-section credential 2>nul
-git config --local --add credential.helper "cache --timeout=120"
+set "CRED_FILE=%TEMP%\git_cred_%RANDOM%%RANDOM%.tmp"
+git config --local --add credential.helper "store --file=%CRED_FILE%"
 
 set "HOST="
 set "USERNAME="
@@ -233,7 +226,7 @@ echo.
 echo ------------------------------------------------------------
 echo  请输入 GitHub Personal Access Token (PAT)
 echo  - 输入不会显示在屏幕上
-echo  - 仅缓存在内存中 120 秒, 跑完立即清空
+echo  - 暂存于临时文件, 脚本结束时立即删除
 echo  - 全局凭据管理器 GCM 已被本脚本临时屏蔽
 echo ------------------------------------------------------------
 echo.
@@ -251,19 +244,11 @@ if not defined PAT (
 )
 
 (
-    echo protocol=https
-    echo host=%HOST%
-    echo username=%USERNAME%
-    echo password=%PAT%
-) | git credential approve
+    echo https://%USERNAME%:%PAT%@%HOST%
+) > "%CRED_FILE%"
 
 set "PAT="
-
-if errorlevel 1 (
-    echo [错误] 凭据写入内存失败。
-    exit /b 1
-)
-echo [OK] PAT 已缓存到内存。
+echo [OK] PAT 已暂存。
 
 git show-ref --verify --quiet refs/heads/dev
 if errorlevel 1 (
@@ -271,14 +256,14 @@ if errorlevel 1 (
     git fetch origin dev
     if errorlevel 1 (
         echo [错误] 无法从 origin 获取 dev 分支。
-        exit /b 1
+        goto :cleanup
     )
     git checkout -b dev origin/dev
 ) else (
     git checkout dev
     if errorlevel 1 (
         echo [错误] 切换到 dev 分支失败。
-        exit /b 1
+        goto :cleanup
     )
 )
 
@@ -289,7 +274,7 @@ if errorlevel 1 (
     echo.
     echo [错误] 无法同步远程 dev。
     echo        请手动处理: git pull --rebase origin dev
-    exit /b 1
+    goto :cleanup
 )
 echo [OK] 同步完成。
 
@@ -301,7 +286,7 @@ if errorlevel 1 (
     echo [错误] 合并失败, 已中止。
     git merge --abort 2>nul
     git checkout "%CURRENT%" 2>nul
-    exit /b 1
+    goto :cleanup
 )
 echo [OK] 合并成功。
 
@@ -311,7 +296,7 @@ git push origin dev
 if errorlevel 1 (
     echo.
     echo [错误] 推送失败。
-    exit /b 1
+    goto :cleanup
 )
 echo [OK] 推送成功。
 
@@ -323,14 +308,14 @@ if errorlevel 1 (
     git branch -D "%CURRENT%"
     if errorlevel 1 (
         echo [错误] 删除分支 %CURRENT% 失败。
-        exit /b 1
+        goto :cleanup
     )
 )
 echo [OK] 分支 %CURRENT% 已删除。
 
-git credential-cache exit 2>nul
-echo [OK] PAT 已从内存清除。
-
+:cleanup
+del "%CRED_FILE%" 2>nul
+git config --local --remove-section credential 2>nul
 del "%FAKE_GLOBAL%" 2>nul
 del "%FAKE_SYSTEM%" 2>nul
 
@@ -340,6 +325,7 @@ echo   close 完成
 echo   当前分支:
 git branch --show-current
 echo ============================================================
+echo.
 
 endlocal
 exit /b 0
