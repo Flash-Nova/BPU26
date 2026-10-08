@@ -3,11 +3,12 @@ setlocal enabledelayedexpansion
 @REM chcp 65001 >nul
 
 :: ============================================================
-::  execute.bat — 按名字找源文件并编译/运行
+::  execute.bat — 搜索 + 编译 + 运行 (带时间戳缓存)
 ::  用法:
-::    execute.bat ^<name^>              全仓库搜索
-::    execute.bat ^<name^> -d ^<dir^>    只在指定目录下搜索
-::    execute.bat ?                     显示帮助
+::    execute.bat <name>               全仓库搜索
+::    execute.bat <name> -d <dir>      只在指定目录下搜索
+::    execute.bat <name> -f            强制重新编译
+::    execute.bat ?                    显示帮助
 :: ============================================================
 
 cd /d "%~dp0"
@@ -21,20 +22,34 @@ if "%~1"=="" goto :show_usage
 
 set "NAME=%~1"
 set "SEARCH_DIR="
+set "FORCE_BUILD="
 
-if /i "%~2"=="-d" (
-    if "%~3"=="" (
+shift
+:parse_args
+if "%~1"=="" goto :parse_done
+if /i "%~1"=="-d" (
+    if "%~2"=="" (
         echo [错误] -d 需要一个目录参数
-        echo 用法: execute.bat ^<name^> -d ^<dir^>
         exit /b 1
     )
-    if not exist "%~3" (
-        echo [错误] 目录不存在: %~3
+    if not exist "%~2" (
+        echo [错误] 目录不存在: %~2
         exit /b 1
     )
-    for %%d in ("%~3") do set "SEARCH_DIR=%%~fd"
+    for %%d in ("%~2") do set "SEARCH_DIR=%%~fd"
+    shift
+    shift
+    goto :parse_args
 )
+if /i "%~1"=="-f" (
+    set "FORCE_BUILD=1"
+    shift
+    goto :parse_args
+)
+echo [错误] 未知参数: %~1
+exit /b 1
 
+:parse_done
 goto :search_start
 
 :show_help
@@ -43,32 +58,23 @@ echo   execute.bat — 搜索 + 编译 + 运行
 echo ============================================================
 echo.
 echo 用法:
-echo   execute.bat ^<name^>              在整个仓库搜索名为 ^<name^> 的源文件
+echo   execute.bat ^<name^>              在整个仓库搜索 ^<name^> 的源文件
 echo   execute.bat ^<name^> -d ^<dir^>    只在指定目录下搜索
+echo   execute.bat ^<name^> -f            强制重新编译
 echo   execute.bat ?                     显示本帮助
 echo.
 echo 支持后缀: .c  .cpp  .cc  .cxx  .py
 echo.
 echo 行为:
-echo   - 找到 1 个匹配 -^> 直接编译/运行
-echo   - 找到多个匹配 -^> 列出菜单让你选
-echo   - .c   使用 gcc
-echo   - .cpp 使用 g++
-echo   - .py  优先用仓库根目录下的 .venv, 否则用系统 python
-echo.
-echo 说明:
-echo   C/C++ 编译时加 -fexec-charset=GBK, 让源文件 UTF-8 中的
-echo   字符串常量在 exe 里变成 GBK 字节, 直接适配 cmd 936。
-echo.
-echo 示例:
-echo   execute.bat first
-echo   execute.bat hw -d date\20260929-c
+echo   - exe 比源文件新  -^> 跳过编译, 直接运行
+echo   - exe 比源文件旧  -^> 重新编译再运行
+echo   - exe 不存在      -^> 直接编译再运行
 echo.
 pause
 exit /b 0
 
 :show_usage
-echo 用法: execute.bat ^<name^> [ -d ^<dir^> ]
+echo 用法: execute.bat ^<name^> [ -d ^<dir^> ] [ -f ]
 echo 帮助: execute.bat ?
 pause
 exit /b 1
@@ -134,42 +140,75 @@ if /i "!EXT!"==".py"  goto :run_py
 echo [错误] 不支持的扩展名: !EXT!
 exit /b 1
 
+:: ---------- C ----------
 :run_c
-echo [INFO] gcc 编译...
-gcc -fexec-charset=GBK "!TARGET!" -o "!DIR!!BASE!.exe"
-if errorlevel 1 (
-    echo.
-    echo [警告] -fexec-charset 不被支持, 尝试不带该参数重新编译...
-    gcc "!TARGET!" -o "!DIR!!BASE!.exe"
-    if errorlevel 1 ( echo [错误] 编译失败 & exit /b 1 )
+set "SRC=!TARGET!"
+set "EXE=!DIR!!BASE!.exe"
+set "NEED_BUILD=1"
+
+if exist "!EXE!" if not defined FORCE_BUILD (
+    powershell -NoProfile -Command "if ((Get-Item -LiteralPath '!SRC!').LastWriteTime -le (Get-Item -LiteralPath '!EXE!').LastWriteTime) { exit 0 } else { exit 1 }"
+    if not errorlevel 1 (
+        set "NEED_BUILD=0"
+        echo [INFO] 已是最新, 跳过编译。
+    )
 )
-echo [INFO] 运行 !DIR!!BASE!.exe
+
+if "!NEED_BUILD!"=="1" (
+    echo [INFO] gcc 编译...
+    gcc -fexec-charset=GBK "!SRC!" -o "!EXE!"
+    if errorlevel 1 (
+        echo.
+        echo [警告] -fexec-charset 不被支持, 尝试不带该参数重新编译...
+        gcc "!SRC!" -o "!EXE!"
+        if errorlevel 1 ( echo [错误] 编译失败 & exit /b 1 )
+    )
+)
+
+echo [INFO] 运行 !EXE!
 echo ------------------------------------------------------------
-"!DIR!!BASE!.exe"
+"!EXE!"
 set "RC=!ERRORLEVEL!"
 echo.
 echo ------------------------------------------------------------
 echo [INFO] 退出码: !RC!
 exit /b !RC!
 
+:: ---------- C++ ----------
 :run_cpp
-echo [INFO] g++ 编译...
-g++ -fexec-charset=GBK "!TARGET!" -o "!DIR!!BASE!.exe"
-if errorlevel 1 (
-    echo.
-    echo [警告] -fexec-charset 不被支持, 尝试不带该参数重新编译...
-    g++ "!TARGET!" -o "!DIR!!BASE!.exe"
-    if errorlevel 1 ( echo [错误] 编译失败 & exit /b 1 )
+set "SRC=!TARGET!"
+set "EXE=!DIR!!BASE!.exe"
+set "NEED_BUILD=1"
+
+if exist "!EXE!" if not defined FORCE_BUILD (
+    powershell -NoProfile -Command "if ((Get-Item -LiteralPath '!SRC!').LastWriteTime -le (Get-Item -LiteralPath '!EXE!').LastWriteTime) { exit 0 } else { exit 1 }"
+    if not errorlevel 1 (
+        set "NEED_BUILD=0"
+        echo [INFO] 已是最新, 跳过编译。
+    )
 )
-echo [INFO] 运行 !DIR!!BASE!.exe
+
+if "!NEED_BUILD!"=="1" (
+    echo [INFO] g++ 编译...
+    g++ -fexec-charset=GBK "!SRC!" -o "!EXE!"
+    if errorlevel 1 (
+        echo.
+        echo [警告] -fexec-charset 不被支持, 尝试不带该参数重新编译...
+        g++ "!SRC!" -o "!EXE!"
+        if errorlevel 1 ( echo [错误] 编译失败 & exit /b 1 )
+    )
+)
+
+echo [INFO] 运行 !EXE!
 echo ------------------------------------------------------------
-"!DIR!!BASE!.exe"
+"!EXE!"
 set "RC=!ERRORLEVEL!"
 echo.
 echo ------------------------------------------------------------
 echo [INFO] 退出码: !RC!
 exit /b !RC!
 
+:: ---------- Python ----------
 :run_py
 set "PYTHON="
 if exist "%REPO_ROOT%.venv\Scripts\python.exe" (
