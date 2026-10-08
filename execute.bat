@@ -1,28 +1,88 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul
+@REM chcp 65001 >nul
 
 :: ============================================================
-::  start.bat â€” æŒ‰åå­—æ‰¾æºæ–‡ä»¶å¹¶ç¼–è¯‘/è¿è¡Œ
-::  ç”¨æ³•:  start.bat ^<åå­—(ä¸å¸¦åç¼€)^>
-::  ä¾‹:    start.bat first
+::  execute.bat ¡ª °´Ãû×ÖÕÒÔ´ÎÄ¼ş²¢±àÒë/ÔËĞĞ
+::  ÓÃ·¨:
+::    execute.bat ^<name^>              È«²Ö¿âËÑË÷
+::    execute.bat ^<name^> -d ^<dir^>    Ö»ÔÚÖ¸¶¨Ä¿Â¼ÏÂËÑË÷
+::    execute.bat ?                     ÏÔÊ¾°ïÖú
 :: ============================================================
 
 cd /d "%~dp0"
 set "REPO_ROOT=%~dp0"
 
-if "%~1"=="" (
-    echo ç”¨æ³•: %~nx0 ^<æ–‡ä»¶å^(ä¸å¸¦åç¼€^)^>
-    echo ä¾‹:   %~nx0 first
-    pause
-    exit /b 1
-)
+:: ---------- ²ÎÊı½âÎö ----------
+if "%~1"=="?" goto :show_help
+if /i "%~1"=="-h" goto :show_help
+if /i "%~1"=="--help" goto :show_help
+if "%~1"=="" goto :show_usage
 
 set "NAME=%~1"
+set "SEARCH_DIR="
 
-:: ---------- æœç´¢ ----------
-set "TMPFILE=%TEMP%\start_search_%RANDOM%%RANDOM%.txt"
-powershell -NoProfile -Command "Get-ChildItem -Path '%REPO_ROOT%' -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in @('%NAME%.c','%NAME%.cpp','%NAME%.cc','%NAME%.cxx','%NAME%.py') -and $_.FullName -notlike '*\.git\*' -and $_.FullName -notlike '*\.venv\*' } | Select-Object -ExpandProperty FullName" > "%TMPFILE%" 2>nul
+if /i "%~2"=="-d" (
+    if "%~3"=="" (
+        echo [´íÎó] -d ĞèÒªÒ»¸öÄ¿Â¼²ÎÊı
+        echo ÓÃ·¨: execute.bat ^<name^> -d ^<dir^>
+        exit /b 1
+    )
+    if not exist "%~3" (
+        echo [´íÎó] Ä¿Â¼²»´æÔÚ: %~3
+        exit /b 1
+    )
+    for %%d in ("%~3") do set "SEARCH_DIR=%%~fd"
+)
+
+goto :search_start
+
+:show_help
+echo ============================================================
+echo   execute.bat ¡ª ËÑË÷ + ±àÒë + ÔËĞĞ
+echo ============================================================
+echo.
+echo ÓÃ·¨:
+echo   execute.bat ^<name^>              ÔÚÕû¸ö²Ö¿âËÑË÷ÃûÎª ^<name^> µÄÔ´ÎÄ¼ş
+echo   execute.bat ^<name^> -d ^<dir^>    Ö»ÔÚÖ¸¶¨Ä¿Â¼ÏÂËÑË÷
+echo   execute.bat ?                     ÏÔÊ¾±¾°ïÖú
+echo.
+echo Ö§³Öºó×º: .c  .cpp  .cc  .cxx  .py
+echo.
+echo ĞĞÎª:
+echo   - ÕÒµ½ 1 ¸öÆ¥Åä -^> Ö±½Ó±àÒë/ÔËĞĞ
+echo   - ÕÒµ½¶à¸öÆ¥Åä -^> ÁĞ³ö²Ëµ¥ÈÃÄãÑ¡
+echo   - .c   Ê¹ÓÃ gcc
+echo   - .cpp Ê¹ÓÃ g++
+echo   - .py  ÓÅÏÈÓÃ²Ö¿â¸ùÄ¿Â¼ÏÂµÄ .venv, ·ñÔòÓÃÏµÍ³ python
+echo.
+echo ËµÃ÷:
+echo   C/C++ ±àÒëÊ±¼Ó -fexec-charset=GBK, ÈÃÔ´ÎÄ¼ş UTF-8 ÖĞµÄ
+echo   ×Ö·û´®³£Á¿ÔÚ exe Àï±ä³É GBK ×Ö½Ú, Ö±½ÓÊÊÅä cmd 936¡£
+echo.
+echo Ê¾Àı:
+echo   execute.bat first
+echo   execute.bat hw -d date\20260929-c
+echo.
+pause
+exit /b 0
+
+:show_usage
+echo ÓÃ·¨: execute.bat ^<name^> [ -d ^<dir^> ]
+echo °ïÖú: execute.bat ?
+pause
+exit /b 1
+
+:: ---------- ËÑË÷ ----------
+:search_start
+set "TMPFILE=%TEMP%\execute_search_%RANDOM%%RANDOM%.txt"
+
+if defined SEARCH_DIR (
+    echo [ĞÅÏ¢] ËÑË÷·¶Î§: !SEARCH_DIR!
+    powershell -NoProfile -Command "Get-ChildItem -Path '!SEARCH_DIR!' -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in @('%NAME%.c','%NAME%.cpp','%NAME%.cc','%NAME%.cxx','%NAME%.py') -and $_.FullName -notlike '*\.git\*' -and $_.FullName -notlike '*\.venv\*' } | Select-Object -ExpandProperty FullName" > "%TMPFILE%" 2>nul
+) else (
+    powershell -NoProfile -Command "Get-ChildItem -Path '%REPO_ROOT%' -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in @('%NAME%.c','%NAME%.cpp','%NAME%.cc','%NAME%.cxx','%NAME%.py') -and $_.FullName -notlike '*\.git\*' -and $_.FullName -notlike '*\.venv\*' } | Select-Object -ExpandProperty FullName" > "%TMPFILE%" 2>nul
+)
 
 set "COUNT=0"
 for /f "usebackq delims=" %%f in ("%TMPFILE%") do (
@@ -32,8 +92,7 @@ for /f "usebackq delims=" %%f in ("%TMPFILE%") do (
 del "%TMPFILE%" >nul 2>&1
 
 if %COUNT%==0 (
-    echo [é”™è¯¯] æœªæ‰¾åˆ°åä¸º %NAME% çš„æºæ–‡ä»¶ ^(.c .cpp .cc .cxx .py^)
-    pause
+    echo [´íÎó] Î´ÕÒµ½ÃûÎª %NAME% µÄÔ´ÎÄ¼ş ^(.c .cpp .cc .cxx .py^)
     exit /b 1
 )
 
@@ -42,16 +101,15 @@ if %COUNT%==1 (
     goto :run
 )
 
-:: ---------- å¤šä¸ªï¼šåˆ—èœå• ----------
 echo.
-echo æ‰¾åˆ° %COUNT% ä¸ªåŒ¹é…:
+echo ÕÒµ½ %COUNT% ¸öÆ¥Åä:
 echo.
 for /l %%i in (1,1,%COUNT%) do call :format_line %%i "!FILE_%%i!"
 echo.
 
 :ask
 set "CHOICE="
-set /p "CHOICE=è¯·è¾“å…¥åºå· (1-%COUNT%): "
+set /p "CHOICE=ÇëÊäÈëĞòºÅ (1-%COUNT%): "
 echo !CHOICE!| findstr /r "^[1-9][0-9]*$" >nul
 if errorlevel 1 goto :ask
 if !CHOICE! LSS 1 goto :ask
@@ -60,7 +118,7 @@ set "TARGET=!FILE_%CHOICE%!"
 
 :run
 echo.
-echo [INFO] é€‰ä¸­: !TARGET!
+echo [INFO] Ñ¡ÖĞ: !TARGET!
 
 for %%f in ("!TARGET!") do (
     set "EXT=%%~xf"
@@ -73,63 +131,70 @@ if /i "!EXT!"==".cpp" goto :run_cpp
 if /i "!EXT!"==".cc"  goto :run_cpp
 if /i "!EXT!"==".cxx" goto :run_cpp
 if /i "!EXT!"==".py"  goto :run_py
-echo [é”™è¯¯] ä¸æ”¯æŒçš„æ‰©å±•å: !EXT!
-pause
+echo [´íÎó] ²»Ö§³ÖµÄÀ©Õ¹Ãû: !EXT!
 exit /b 1
 
 :run_c
-echo [INFO] gcc ç¼–è¯‘...
-gcc "!TARGET!" -o "!DIR!!BASE!.exe"
-if errorlevel 1 ( echo [é”™è¯¯] ç¼–è¯‘å¤±è´¥ & pause & exit /b 1 )
-echo [INFO] è¿è¡Œ !DIR!!BASE!.exe
+echo [INFO] gcc ±àÒë...
+gcc -fexec-charset=GBK "!TARGET!" -o "!DIR!!BASE!.exe"
+if errorlevel 1 (
+    echo.
+    echo [¾¯¸æ] -fexec-charset ²»±»Ö§³Ö, ³¢ÊÔ²»´ø¸Ã²ÎÊıÖØĞÂ±àÒë...
+    gcc "!TARGET!" -o "!DIR!!BASE!.exe"
+    if errorlevel 1 ( echo [´íÎó] ±àÒëÊ§°Ü & exit /b 1 )
+)
+echo [INFO] ÔËĞĞ !DIR!!BASE!.exe
 echo ------------------------------------------------------------
 "!DIR!!BASE!.exe"
 set "RC=!ERRORLEVEL!"
+echo.
 echo ------------------------------------------------------------
-echo [INFO] é€€å‡ºç : !RC!
-pause
+echo [INFO] ÍË³öÂë: !RC!
 exit /b !RC!
 
 :run_cpp
-echo [INFO] g++ ç¼–è¯‘...
-g++ "!TARGET!" -o "!DIR!!BASE!.exe"
-if errorlevel 1 ( echo [é”™è¯¯] ç¼–è¯‘å¤±è´¥ & pause & exit /b 1 )
-echo [INFO] è¿è¡Œ !DIR!!BASE!.exe
+echo [INFO] g++ ±àÒë...
+g++ -fexec-charset=GBK "!TARGET!" -o "!DIR!!BASE!.exe"
+if errorlevel 1 (
+    echo.
+    echo [¾¯¸æ] -fexec-charset ²»±»Ö§³Ö, ³¢ÊÔ²»´ø¸Ã²ÎÊıÖØĞÂ±àÒë...
+    g++ "!TARGET!" -o "!DIR!!BASE!.exe"
+    if errorlevel 1 ( echo [´íÎó] ±àÒëÊ§°Ü & exit /b 1 )
+)
+echo [INFO] ÔËĞĞ !DIR!!BASE!.exe
 echo ------------------------------------------------------------
 "!DIR!!BASE!.exe"
 set "RC=!ERRORLEVEL!"
+echo.
 echo ------------------------------------------------------------
-echo [INFO] é€€å‡ºç : !RC!
-pause
+echo [INFO] ÍË³öÂë: !RC!
 exit /b !RC!
 
 :run_py
 set "PYTHON="
 if exist "%REPO_ROOT%.venv\Scripts\python.exe" (
     set "PYTHON=%REPO_ROOT%.venv\Scripts\python.exe"
-    echo [INFO] ä½¿ç”¨ venv: %REPO_ROOT%.venv
+    echo [INFO] Ê¹ÓÃ venv: %REPO_ROOT%.venv
 ) else (
     where python >nul 2>&1
     if errorlevel 1 (
-        echo [é”™è¯¯] æœªæ‰¾åˆ° pythonï¼Œä¹Ÿæ²¡æœ‰ %REPO_ROOT%.venv
-        pause
+        echo [´íÎó] Î´ÕÒµ½ python£¬Ò²Ã»ÓĞ %REPO_ROOT%.venv
         exit /b 1
     )
     set "PYTHON=python"
-    echo [INFO] ä½¿ç”¨ç³»ç»Ÿ python ^(æœªæ‰¾åˆ° .venv^)
+    echo [INFO] Ê¹ÓÃÏµÍ³ python ^(Î´ÕÒµ½ .venv^)
 )
-echo [INFO] è¿è¡Œ !TARGET!
+echo [INFO] ÔËĞĞ !TARGET!
 echo ------------------------------------------------------------
 "!PYTHON!" "!TARGET!"
 set "RC=!ERRORLEVEL!"
+echo.
 echo ------------------------------------------------------------
-echo [INFO] é€€å‡ºç : !RC!
-pause
+echo [INFO] ÍË³öÂë: !RC!
 exit /b !RC!
 
-:: ---------- å­ç¨‹åºï¼šæ ¼å¼åŒ–ä¸€è¡Œèœå• ----------
+:: ---------- ×Ó³ÌĞò£º¸ñÊ½»¯Ò»ĞĞ²Ëµ¥ ----------
 :format_line
-:: %1 = åºå·, %2 = å®Œæ•´è·¯å¾„
 set "IDX=%~1"
 set "FPATH=%~2"
 
@@ -153,5 +218,5 @@ if /i "!SUFFIX_PART!"=="ai"    set "SUFFIX_DISPLAY=AI"
 if /i "!SUFFIX_PART!"=="other" set "SUFFIX_DISPLAY=Other"
 if not defined SUFFIX_DISPLAY  set "SUFFIX_DISPLAY=!SUFFIX_PART!"
 
-echo   !IDX!ä¸¨!Y!-!M!-!D!ä¸¨!SUFFIX_DISPLAY!ä¸¨!FNAME!
+echo   !IDX!^|!Y!-!M!-!D!^|!SUFFIX_DISPLAY!^|!FNAME!
 exit /b 0

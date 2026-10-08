@@ -1,105 +1,192 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul
+@REM chcp 65001 >nul
 
 :: ============================================================
-::  New Branch â€” newb.bat â€” å»ºåˆ†æ”¯ + å»ºåŒåæ–‡ä»¶å¤¹å¹¶åˆ‡è¿‡åŽ»
-::  åˆ†æ”¯å‘½å: yyyyMMdd + (-c | -ai | -other)
-::
-::  dev ä¸Šè‹¥æœ‰æœªæäº¤æ”¹åŠ¨: ç›´æŽ¥å¸¦å…¥æ–°åˆ†æ”¯, ä¸åš commit/stash
-::  (Git é»˜è®¤è¡Œä¸º, æ–°åˆ†æ”¯å»ºå¥½åŽè¿™äº›æ”¹åŠ¨å°±è½åœ¨æ–°åˆ†æ”¯å·¥ä½œåŒº)
+::  New Branch ¡ª newb.bat
+::  ÓÃ·¨:
+::    newb.bat                   °´ÈÕÆÚ+¿ÎÐÍ´´½¨·ÖÖ§
+::    newb.bat -custom ^<name^>   ´´½¨×Ô¶¨ÒåÃû×ÖµÄ·ÖÖ§
+::    newb.bat ?                 ÏÔÊ¾°ïÖú
 :: ============================================================
 
 cd /d "%~dp0"
 
-:: ---------- 0. å¿…é¡»æ˜¯ Git ä»“åº“ ----------
-git rev-parse --is-inside-work-tree >nul 2>&1
+:: ---------- ²ÎÊý½âÎö ----------
+if "%~1"=="?" goto :show_help
+if /i "%~1"=="-h" goto :show_help
+if /i "%~1"=="--help" goto :show_help
+if /i "%~1"=="-custom" goto :mode_custom
+if "%~1"=="" goto :mode_default
+echo [´íÎó] Î´Öª²ÎÊý: %~1
+echo.
+goto :show_help
+
+:show_help
+echo ============================================================
+echo   newb.bat ¡ª ´´½¨ÁÙÊ±·ÖÖ§ + Í¬ÃûÄ¿Â¼
+echo ============================================================
+echo.
+echo ÓÃ·¨:
+echo   newb.bat                   °´µ±Ç°ÈÕÆÚ+¿ÎÐÍ´´½¨·ÖÖ§
+echo                              ÖÜ¶þ/ËÄ 08-10 µã  ^-^> yyyyMMdd-c
+echo                              ÖÜÈý   08-10 µã  ^-^> yyyyMMdd-ai
+echo                              ÆäËûÊ±¶Î        ^-^> yyyyMMdd-other
+echo.
+echo   newb.bat -custom ^<name^>   ´´½¨×Ô¶¨ÒåÃû×ÖµÄ·ÖÖ§
+echo                              name Ö»ÔÊÐí×ÖÄ¸¡¢Êý×Ö¡¢ºá¸Ü [a-zA-Z0-9-]
+echo.
+echo   newb.bat ?                 ÏÔÊ¾±¾°ïÖú
+echo.
+echo ËµÃ÷:
+echo   - ´´½¨Ç°»áÏÈÇÐµ½ dev ²¢Í¬²½ origin/dev
+echo   - ·ÖÖ§½¨ºÃºó×Ô¶¯´´½¨Ä¿Â¼ date\^<·ÖÖ§Ãû^>
+echo   - Èôµ±Ç°ÔÚ dev ÉÏÓÐÔà¸Ä¶¯, »áËæÐÂ·ÖÖ§Ò»Æð´ø×ß
+echo.
+pause
+exit /b 0
+
+:: ---------- ×Ô¶¨ÒåÄ£Ê½ ----------
+:mode_custom
+if "%~2"=="" (
+    echo [´íÎó] -custom ÐèÒªÒ»¸ö·ÖÖ§Ãû²ÎÊý
+    echo ÓÃ·¨: newb.bat -custom ^<name^>
+    exit /b 1
+)
+set "CUSTOM_NAME=%~2"
+
+:: ÑÏ¸ñÐ£Ñé: Ö»ÔÊÐí ASCII ×ÖÄ¸Êý×Öºá¸Ü
+powershell -NoProfile -Command "if ('!CUSTOM_NAME!' -match '^[a-zA-Z0-9-]+$') { exit 0 } else { exit 1 }"
 if errorlevel 1 (
-    echo [é”™è¯¯] å½“å‰ç›®å½•ä¸æ˜¯ Git ä»“åº“: %CD%
-    pause
+    echo.
+    echo [´íÎó] ·ÖÖ§ÃûÖ»ÔÊÐí×ÖÄ¸¡¢Êý×Ö¡¢ºá¸Ü
+    echo        ÄãÊäÈëµÄÊÇ: !CUSTOM_NAME!
+    echo.
     exit /b 1
 )
 
-:: ---------- 0.5 è‹¥åœ¨ dev ä¸”æœ‰è„æ”¹åŠ¨, æç¤ºä¸€ä¸‹(ä¸é˜»å¡ž) ----------
+set "BRANCH=!CUSTOM_NAME!"
+set "MODE=custom"
+goto :after_param
+
+:: ---------- Ä¬ÈÏÄ£Ê½ ----------
+:mode_default
+set "MODE=default"
+goto :after_param
+
+:: ---------- ¹«¹²Á÷³Ì ----------
+:after_param
+git rev-parse --is-inside-work-tree >nul 2>&1
+if errorlevel 1 (
+    echo [´íÎó] µ±Ç°Ä¿Â¼²»ÊÇ Git ²Ö¿â: %CD%
+    exit /b 1
+)
+
+:: Èôµ±Ç°²»ÔÚ dev, ÏÈÇÐµ½ dev
 set "CURBR="
 for /f "delims=" %%b in ('git branch --show-current') do set "CURBR=%%b"
 
-if /i "!CURBR!"=="dev" (
+if /i not "!CURBR!"=="dev" (
+    echo [ÐÅÏ¢] ÇÐ»»µ½ dev ·ÖÖ§...
+    git checkout dev
+    if errorlevel 1 (
+        echo [´íÎó] ÎÞ·¨ÇÐ»»µ½ dev ·ÖÖ§¡£
+        exit /b 1
+    )
+) else (
     set "DIRTY="
     for /f "delims=" %%u in ('git status --porcelain') do set "DIRTY=1"
     if defined DIRTY (
         echo.
-        echo [æç¤º] dev ä¸Šå­˜åœ¨æœªæäº¤çš„æ”¹åŠ¨, å°†éšæ–°åˆ†æ”¯ä¸€èµ·å¸¦è¿‡åŽ»:
+        echo [ÌáÊ¾] dev ÉÏ´æÔÚÎ´Ìá½»µÄ¸Ä¶¯, ½«ËæÐÂ·ÖÖ§Ò»Æð´ø¹ýÈ¥:
         git status --short
         echo.
     )
 )
 
-:: ---------- 1. è¯»å–æœ¬æœºæ—¥æœŸ / å°æ—¶ / æ˜ŸæœŸ ----------
+:: Í¬²½ dev
+echo [ÐÅÏ¢] ´Ó origin Í¬²½ dev...
+git pull --ff-only origin dev 2>nul
+if errorlevel 1 (
+    echo [¾¯¸æ] ÎÞ·¨¿ì½øÍ¬²½Ô¶³Ì dev ^(¿ÉÄÜÎÞÍøÂç»ò±¾µØ dev ·Ö²æ^)
+    echo        ¼ÌÐø»ùÓÚ±¾µØ dev ¿ªÐÂ·ÖÖ§
+)
+
+:: ×Ô¶¨ÒåÄ£Ê½: BRANCH ÒÑ¾ÍÐ÷, Ö±½Ó¿ª
+if /i "!MODE!"=="custom" (
+    echo ============================================================
+    echo   ×Ô¶¨Òå·ÖÖ§: !BRANCH!
+    echo ============================================================
+    goto :create_branch
+)
+
+:: Ä¬ÈÏÄ£Ê½: ¶ÁÈÕÆÚ, Ëãºó×º (ÓÃÁÙÊ±ÎÄ¼þ±ÜÃâ for /f ÒýºÅÇ¶Ì×)
+set "DATE_TMP=%TEMP%\newb_date_%RANDOM%.txt"
+powershell -NoProfile -Command "$d=Get-Date; Write-Output ($d.ToString('yyyyMMdd') + ' ' + $d.Hour + ' ' + [int]$d.DayOfWeek)" > "%DATE_TMP%" 2>nul
+
 set "TODAY="
 set "HOUR="
 set "DOW="
-for /f "tokens=1,2,3" %%a in ('powershell -NoProfile -Command "$d=Get-Date; Write-Output ($d.ToString(''yyyyMMdd'') + '' '' + [int]$d.Hour + '' '' + [int]$d.DayOfWeek)"') do (
+for /f "tokens=1,2,3" %%a in (%DATE_TMP%) do (
     set "TODAY=%%a"
     set "HOUR=%%b"
     set "DOW=%%c"
 )
+del "%DATE_TMP%" 2>nul
+
 if not defined TODAY (
-    echo [é”™è¯¯] æ— æ³•èŽ·å–æœ¬æœºæ—¥æœŸã€‚
-    pause
+    echo [´íÎó] ÎÞ·¨»ñÈ¡±¾»úÈÕÆÚ¡£
     exit /b 1
 )
 
-:: ---------- 2. è®¡ç®—åŽç¼€ ----------
-:: DayOfWeek: å‘¨æ—¥=0 å‘¨ä¸€=1 å‘¨äºŒ=2 å‘¨ä¸‰=3 å‘¨å››=4 å‘¨äº”=5 å‘¨å…­=6
+:: Ð£Ñé¶Áµ½µÄÖµÈ·ÊµÏñÊý×Ö
+echo !TODAY!| findstr /r "^[0-9][0-9]*$" >nul
+if errorlevel 1 (
+    echo [´íÎó] ÈÕÆÚ¸ñÊ½Òì³£: TODAY=!TODAY!
+    echo        PowerShell ¿ÉÄÜ·µ»ØÁËÒâÍâÄÚÈÝ, Çë¼ì²éÏµÍ³»·¾³¡£
+    exit /b 1
+)
+
 set "SUFFIX=-other"
 if "%DOW%"=="2" if %HOUR% GEQ 8 if %HOUR% LSS 10 set "SUFFIX=-c"
 if "%DOW%"=="4" if %HOUR% GEQ 8 if %HOUR% LSS 10 set "SUFFIX=-c"
 if "%DOW%"=="3" if %HOUR% GEQ 8 if %HOUR% LSS 10 set "SUFFIX=-ai"
-
 set "BRANCH=%TODAY%%SUFFIX%"
 
 echo ============================================================
-echo   æ—¥æœŸ: %TODAY%   å°æ—¶: %HOUR%   æ˜ŸæœŸ: %DOW%
-echo   ç›®æ ‡åˆ†æ”¯: %BRANCH%
+echo   ÈÕÆÚ: %TODAY%   Ð¡Ê±: %HOUR%   ÐÇÆÚ: %DOW%
+echo   Ä¿±ê·ÖÖ§: %BRANCH%
 echo ============================================================
 
-:: ---------- 3. å»ºåˆ†æ”¯ / åˆ‡åˆ†æ”¯ ----------
-git show-ref --verify --quiet "refs/heads/%BRANCH%"
+:create_branch
+git show-ref --verify --quiet "refs/heads/!BRANCH!"
 if not errorlevel 1 (
-    echo [æç¤º] åˆ†æ”¯å·²å­˜åœ¨ï¼Œç›´æŽ¥åˆ‡æ¢ã€‚
-    git checkout "%BRANCH%"
+    echo [ÌáÊ¾] ·ÖÖ§ÒÑ´æÔÚ£¬Ö±½ÓÇÐ»»¡£
+    git checkout "!BRANCH!"
     if errorlevel 1 (
-        echo.
-        echo [é”™è¯¯] åˆ‡æ¢å¤±è´¥, å¾ˆå¯èƒ½ dev ä¸Šçš„æœªæäº¤æ”¹åŠ¨ä¸Žæ–°åˆ†æ”¯å†²çªã€‚
-        echo        è¯·å…ˆå¤„ç†å†²çªæ–‡ä»¶åŽå†è¯•ã€‚
-        pause
+        echo [´íÎó] ÇÐ»»Ê§°Ü, ¿ÉÄÜÓÐÎ´Ìá½»¸Ä¶¯ÓëÐÂ·ÖÖ§³åÍ»¡£
         exit /b 1
     )
 ) else (
-    git checkout -b "%BRANCH%"
+    git checkout -b "!BRANCH!"
     if errorlevel 1 (
-        echo.
-        echo [é”™è¯¯] åˆ›å»ºåˆ†æ”¯å¤±è´¥, å¾ˆå¯èƒ½ dev ä¸Šçš„æœªæäº¤æ”¹åŠ¨ä¸Žæ–°åˆ†æ”¯å†²çªã€‚
-        echo        è¯·å…ˆå¤„ç†å†²çªæ–‡ä»¶åŽå†è¯•ã€‚
-        pause
+        echo [´íÎó] ´´½¨·ÖÖ§Ê§°Ü, ¿ÉÄÜÓÐÎ´Ìá½»¸Ä¶¯ÓëÐÂ·ÖÖ§³åÍ»¡£
         exit /b 1
     )
 )
 
-:: ---------- 4. åˆ›å»ºåŒåæ–‡ä»¶å¤¹ ----------
-set "BRANCH_DIR=date\%BRANCH%"
-if not exist "%BRANCH_DIR%" (
-    mkdir "%BRANCH_DIR%"
-    echo [OK] å·²åˆ›å»ºç›®å½•: %BRANCH_DIR%
+set "BRANCH_DIR=date\!BRANCH!"
+if not exist "!BRANCH_DIR!" (
+    mkdir "!BRANCH_DIR!"
+    echo [OK] ÒÑ´´½¨Ä¿Â¼: !BRANCH_DIR!
 ) else (
-    echo [æç¤º] ç›®å½•å·²å­˜åœ¨: %BRANCH_DIR%
+    echo [ÌáÊ¾] Ä¿Â¼ÒÑ´æÔÚ: !BRANCH_DIR!
 )
 
 echo.
-echo [å®Œæˆ] å½“å‰åˆ†æ”¯:
+echo [Íê³É] µ±Ç°·ÖÖ§:
 git branch --show-current
 echo.
 
-pause
 endlocal
+exit /b 0

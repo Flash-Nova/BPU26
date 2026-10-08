@@ -1,3 +1,3 @@
 py -m venv .venv
 .venv\Scripts\activate
-@REM pip install éœ€è¦çš„åŒ…
+@REM pip install ĞèÒªµÄ°ü

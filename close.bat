@@ -1,102 +1,218 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul
+@REM chcp 65001 >nul
 
 :: ============================================================
-::  close.bat â€” å…³é—­å½“å‰ä¸´æ—¶åˆ†æ”¯
-::  æŠŠå½“å‰ä¸´æ—¶åˆ†æ”¯åˆå¹¶åˆ° dev å¹¶æ¨é€åˆ° origin (HTTPS + PAT)
-::
-::  æµç¨‹:
-::   1. æ£€æŸ¥ Git ä»“åº“
-::   2. æ£€æŸ¥ remote å¿…é¡»æ˜¯ HTTPS
-::   3. æ£€æŸ¥å½“å‰åˆ†æ”¯(ä¸èƒ½æ˜¯ dev)
-::   4. æ£€æŸ¥æ˜¯å¦æœ‰æœªæäº¤ä¿®æ”¹ -> æœ‰åˆ™æ‹’ç»
-::   5. éšè—è¾“å…¥ PAT, ä»…ç¼“å­˜åˆ°å†…å­˜(120 ç§’)
-::   6. åˆ‡åˆ° dev
-::   7. åˆå¹¶ä¸´æ—¶åˆ†æ”¯åˆ° dev (å¤±è´¥å³åœ)
-::   8. æ¨é€ dev åˆ° origin (å¤±è´¥å³åœ)
-::   9. åˆ é™¤æœ¬åœ°ä¸´æ—¶åˆ†æ”¯
-::  10. ä¸»åŠ¨æ¸…ç©ºå†…å­˜ä¸­çš„ PAT
+::  close.bat ¡ª ¹Ø±Õµ±Ç°ÁÙÊ±·ÖÖ§
+::  ÓÃ·¨:
+::    close.bat               merge µ½ dev + push + É¾³ı·ÖÖ§
+::    close.bat -nomerge      Ö±½ÓÉ¾³ı·ÖÖ§, Î´Ìá½»¸Ä¶¯¼Ì³Ğµ½ dev
+::    close.bat ?             ÏÔÊ¾°ïÖú
 :: ============================================================
 
 cd /d "%~dp0"
 
-:: ---------- 1. æ£€æŸ¥ Git ä»“åº“ ----------
+:: ---------- ²ÎÊı½âÎö ----------
+if "%~1"=="?" goto :show_help
+if /i "%~1"=="-h" goto :show_help
+if /i "%~1"=="--help" goto :show_help
+if /i "%~1"=="-nomerge" goto :mode_no_merge
+if "%~1"=="" goto :mode_default
+echo [´íÎó] Î´Öª²ÎÊı: %~1
+echo.
+goto :show_help
+
+:show_help
+echo ============================================================
+echo   close.bat - ¹Ø±Õµ±Ç°ÁÙÊ±·ÖÖ§
+echo ============================================================
+echo.
+echo ÓÃ·¨:
+echo   close.bat              Ä¬ÈÏ: ºÏ²¢µ½ dev + ÍÆËÍ + É¾³ı·ÖÖ§
+echo   close.bat -nomerge     Î£ÏÕ: Ö±½ÓÉ¾³ı·ÖÖ§, Î´Ìá½»¸Ä¶¯¼Ì³Ğµ½ dev
+echo   close.bat ?            ÏÔÊ¾±¾°ïÖú
+echo.
+echo Ä¬ÈÏÁ÷³Ì:
+echo   1. ¼ì²é¹¤×÷Çø±ØĞë¸É¾»
+echo   2. Òş²ØÊäÈë PAT (½ö´æÄÚ´æ 120 Ãë)
+echo   3. ÇĞµ½ dev, pull rebase Í¬²½
+echo   4. merge ÁÙÊ±·ÖÖ§µ½ dev
+echo   5. push dev µ½ origin
+echo   6. É¾³ı±¾µØÁÙÊ±·ÖÖ§
+echo   7. Ö÷¶¯Çå¿ÕÄÚ´æÖĞµÄ PAT
+echo.
+echo -nomerge ËµÃ÷:
+echo   - Ö±½ÓÉ¾³ıµ±Ç°·ÖÖ§, ¸Ã·ÖÖ§ÉÏÎ´Ìá½»µ½ commit µÄ¸Ä¶¯»á¶ªÊ§
+echo   - ¹¤×÷ÇøÀïÎ´Ìá½»µÄ¸Ä¶¯»á¼Ì³Ğµ½ dev
+echo   - ĞèÒªÊäÈë DELETE ´óĞ´È·ÈÏ´Ê
+echo   - »¹ĞèÒªÊäÈë PAT ×÷Îª¶ş´Î°²È«Ëø
+echo.
+pause
+exit /b 0
+
+:mode_default
+set "NO_MERGE="
+goto :after_param
+
+:mode_no_merge
+set "NO_MERGE=1"
+
+echo.
+echo ============================================================
+echo   [Î£ÏÕ²Ù×÷] -nomerge Ä£Ê½
+echo ============================================================
+echo.
+echo   Õâ½«Ö±½ÓÉ¾³ıµ±Ç°·ÖÖ§, ²»ºÏ²¢µ½ dev¡£
+echo   ¸Ã·ÖÖ§ÉÏÎ´ commit µÄËùÓĞ¸Ä¶¯¶¼½«ÓÀ¾Ã¶ªÊ§¡£
+echo   ¹¤×÷ÇøÀïÎ´Ìá½»µÄ¸Ä¶¯»á¼Ì³Ğµ½ dev¡£
+echo.
+echo   µ±Ç°·ÖÖ§:
+for /f "delims=" %%b in ('git branch --show-current') do echo     %%b
+echo.
+
+set "CONFIRM="
+set /p "CONFIRM=ÊäÈë DELETE ´óĞ´È·ÈÏ: "
+if not "!CONFIRM!"=="DELETE" (
+    echo.
+    echo [È¡Ïû] ÊäÈë²»Æ¥Åä, ÒÑÍË³ö¡£
+    exit /b 1
+)
+
+echo.
+echo ÇëÔÙ´ÎÊäÈë GitHub PAT ×÷Îª°²È«Ëø, ÊäÈë²»ÏÔÊ¾:
+
+set "PAT_TMP=%TEMP%\pat_lock_%RANDOM%%RANDOM%.txt"
+powershell -NoProfile -Command "$sec = Read-Host -AsSecureString 'PAT'; $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec); $p = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b); [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b); Write-Output $p" > "%PAT_TMP%" 2>nul
+
+set "LOCK_PAT="
+for /f "usebackq delims=" %%p in ("%PAT_TMP%") do set "LOCK_PAT=%%p"
+del "%PAT_TMP%" 2>nul
+
+if not defined LOCK_PAT (
+    echo [È¡Ïû] Î´ÊäÈë¡£
+    exit /b 1
+)
+if "!LOCK_PAT:~30!"=="" (
+    echo [È¡Ïû] ÊäÈë¹ı¶Ì, ÒÉËÆÎó²Ù×÷, ³¤¶ÈÖÁÉÙÓ¦Îª 30¡£
+    exit /b 1
+)
+set "LOCK_PAT="
+echo [OK] ¶ş´ÎÈ·ÈÏÍ¨¹ı¡£
+echo.
+goto :after_param
+
+:: ---------- ¹«¹²Á÷³Ì ----------
+:after_param
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
-    echo [é”™è¯¯] å½“å‰ç›®å½•ä¸æ˜¯ Git ä»“åº“: %CD%
-    pause
+    echo [´íÎó] µ±Ç°Ä¿Â¼²»ÊÇ Git ²Ö¿â: %CD%
     exit /b 1
 )
 
-:: ---------- 2. æ£€æŸ¥ remote æ˜¯ HTTPS ----------
 set "REMOTE_URL="
 for /f "delims=" %%r in ('git remote get-url origin 2^>nul') do set "REMOTE_URL=%%r"
-
 if not defined REMOTE_URL (
-    echo [é”™è¯¯] æ²¡æœ‰æ‰¾åˆ° origin è¿œç¨‹ã€‚
-    pause
+    echo [´íÎó] Ã»ÓĞÕÒµ½ origin Ô¶³Ì¡£
     exit /b 1
 )
-
-echo [ä¿¡æ¯] origin = %REMOTE_URL%
+echo [ĞÅÏ¢] origin = %REMOTE_URL%
 
 echo %REMOTE_URL% | findstr /b /c:"https://" >nul
 if errorlevel 1 (
     echo.
-    echo [é”™è¯¯] å½“å‰ origin ä¸æ˜¯ HTTPS åè®®ï¼Œæ— æ³•ä½¿ç”¨ PAT æ–¹å¼æäº¤ã€‚
-    echo        è¯·å…ˆæ‰§è¡Œä¸‹é¢è¿™æ¡å‘½ä»¤åˆ‡æ¢åˆ° HTTPS:
+    echo [´íÎó] µ±Ç° origin ²»ÊÇ HTTPS Ğ­Òé¡£
+    echo        ÇëÏÈÖ´ĞĞ: git remote set-url origin https://github.com/Flash-Nova/BPU26.git
     echo.
-    echo    git remote set-url origin https://github.com/Flash-Nova/BPU26.git
-    echo.
-    pause
     exit /b 1
 )
 
-:: ---------- 3. è·å–å½“å‰åˆ†æ”¯ ----------
 set "CURRENT="
 for /f "delims=" %%b in ('git branch --show-current') do set "CURRENT=%%b"
-
 if not defined CURRENT (
-    echo [é”™è¯¯] å½“å‰å¤„äº detached HEAD çŠ¶æ€ï¼Œæ— æ³•æäº¤ã€‚
-    pause
+    echo [´íÎó] µ±Ç°´¦ÓÚ detached HEAD ×´Ì¬¡£
     exit /b 1
 )
 if /i "%CURRENT%"=="dev" (
-    echo [é”™è¯¯] å½“å‰å·²ç»åœ¨ dev åˆ†æ”¯ä¸Šï¼Œæ— éœ€ closeã€‚
-    pause
+    echo [´íÎó] µ±Ç°ÒÑ¾­ÔÚ dev ·ÖÖ§ÉÏ, ÎŞĞè close¡£
     exit /b 1
 )
 
 echo.
 echo ============================================================
-echo   å½“å‰åˆ†æ”¯: %CURRENT%
+echo   µ±Ç°·ÖÖ§: %CURRENT%
 echo ============================================================
 echo.
 
-:: ---------- 4. æ£€æŸ¥æ˜¯å¦æœ‰æœªæäº¤ä¿®æ”¹ ----------
-set "DIRTY="
-for /f "delims=" %%u in ('git status --porcelain') do set "DIRTY=1"
-
-if defined DIRTY (
-    echo [é”™è¯¯] å½“å‰åˆ†æ”¯å­˜åœ¨æœªæäº¤çš„ä¿®æ”¹ï¼Œå·²æ‹’ç» closeã€‚
-    echo.
-    git status --short
-    echo.
-    echo è¯·å…ˆ commit æˆ– stash ä¹‹åå†æ‰§è¡Œ closeã€‚
-    pause
-    exit /b 1
+:: Ôà¼ì²é: ½öÄ¬ÈÏÄ£Ê½ĞèÒª
+if not defined NO_MERGE (
+    set "DIRTY="
+    for /f "delims=" %%u in ('git status --porcelain') do set "DIRTY=1"
+    if defined DIRTY (
+        echo [´íÎó] µ±Ç°·ÖÖ§´æÔÚÎ´Ìá½»µÄĞŞ¸Ä, ÒÑ¾Ü¾ø close¡£
+        echo.
+        git status --short
+        echo.
+        echo ÇëÏÈ commit »ò stash Ö®ºóÔÙÖ´ĞĞ close¡£
+        exit /b 1
+    )
+    echo [OK] ¹¤×÷Çø¸É¾»¡£
+) else (
+    echo [ÌáÊ¾] nomerge Ä£Ê½: Ìø¹ıÔà¼ì²é, Î´Ìá½»¸Ä¶¯»á¼Ì³Ğµ½ dev¡£
 )
-echo [OK] å·¥ä½œåŒºå¹²å‡€ã€‚
 
-:: ---------- 5. å†…å­˜ç¼“å­˜é…ç½® + éšè—è¾“å…¥ PAT ----------
-::  ç”¨ç©º helper æ¸…æ‰å…¨å±€/ç³»ç»Ÿ helper (é¿å…å†™è¿› Windows å‡­æ®ç®¡ç†å™¨)
-::  åªç”¨ cache, 120 ç§’å†…å­˜è¿‡æœŸ, è¿›ç¨‹ç»“æŸå³æ¸…ç©º
+:: ---------- nomerge ·ÖÖ§: ÇĞµ½ dev, Î´Ìá½»¸Ä¶¯¼Ì³Ğ¹ıÈ¥ ----------
+if defined NO_MERGE (
+    echo.
+    echo [ĞÅÏ¢] nomerge Ä£Ê½: ÇĞµ½ dev, Î´Ìá½»¸Ä¶¯»á¼Ì³Ğ¹ıÈ¥...
+    git checkout dev
+    if errorlevel 1 (
+        echo.
+        echo [´íÎó] ÇĞµ½ dev Ê§°Ü¡£
+        echo        Í¨³£ÊÇÎ´Ìá½»¸Ä¶¯Óë dev ÉÏµÄÍ¬ÃûÎÄ¼ş³åÍ»¡£
+        echo        ÇëÊÖ¶¯´¦Àí: git stash push -u ºóÔÙÖØÊÔ, »òÏÈ commit¡£
+        exit /b 1
+    )
+    git branch -D "%CURRENT%"
+    if errorlevel 1 (
+        echo [´íÎó] É¾³ı·ÖÖ§ %CURRENT% Ê§°Ü¡£
+        exit /b 1
+    )
+    echo [OK] ·ÖÖ§ %CURRENT% ÒÑÉ¾³ı, Î´ºÏ²¢µ½ dev¡£
+    echo     ¹¤×÷ÇøÎ´Ìá½»µÄ¸Ä¶¯ÏÖÔÚ¹ÒÔÚ dev ÉÏ¡£
+    echo.
+    echo ============================================================
+    echo   close nomerge Íê³É
+    echo   µ±Ç°·ÖÖ§:
+    git branch --show-current
+    echo ============================================================
+    echo.
+    endlocal
+    exit /b 0
+)
+
+:: ---------- Ä¬ÈÏÄ£Ê½: ÍêÕûÁ÷³Ì ----------
+set "GIT_USER_NAME="
+set "GIT_USER_EMAIL="
+for /f "delims=" %%u in ('git config --global user.name 2^>nul') do set "GIT_USER_NAME=%%u"
+for /f "delims=" %%e in ('git config --global user.email 2^>nul') do set "GIT_USER_EMAIL=%%e"
+
+set "FAKE_GLOBAL=%TEMP%\git_fake_global_%RANDOM%.tmp"
+set "FAKE_SYSTEM=%TEMP%\git_fake_system_%RANDOM%.tmp"
+
+(
+    echo [user]
+    if defined GIT_USER_NAME  echo     name = !GIT_USER_NAME!
+    if defined GIT_USER_EMAIL echo     email = !GIT_USER_EMAIL!
+) > "%FAKE_GLOBAL%"
+echo # empty > "%FAKE_SYSTEM%"
+
+set "GIT_CONFIG_GLOBAL=%FAKE_GLOBAL%"
+set "GIT_CONFIG_SYSTEM=%FAKE_SYSTEM%"
+
 set "EMPTY="
 git config --local credential.helper "%EMPTY%"
 git config --local --add credential.helper "cache --timeout=120"
 
-:: è§£æ host å’Œ username
 set "HOST="
 set "USERNAME="
 for /f "delims=" %%x in ('powershell -NoProfile -Command "$u='%REMOTE_URL%'; if ($u -match '^https://([^/@]+)@([^/]+)/') { Write-Output ('H=' + $matches[2]); Write-Output ('U=' + $matches[1]) } elseif ($u -match '^https://([^/]+)/') { Write-Output ('H=' + $matches[1]); Write-Output 'U=git' } else { Write-Output 'H='; Write-Output 'U=' }"') do (
@@ -106,28 +222,31 @@ for /f "delims=" %%x in ('powershell -NoProfile -Command "$u='%REMOTE_URL%'; if 
 )
 
 if not defined HOST (
-    echo [é”™è¯¯] æ— æ³•ä» origin è§£æå‡ºä¸»æœºå: %REMOTE_URL%
-    pause
+    echo [´íÎó] ÎŞ·¨´Ó origin ½âÎö³öÖ÷»úÃû: %REMOTE_URL%
     exit /b 1
 )
 
 echo.
 echo ------------------------------------------------------------
-echo  è¯·è¾“å…¥ GitHub Personal Access Token (PAT)
-echo  - è¾“å…¥ä¸ä¼šæ˜¾ç¤ºåœ¨å±å¹•ä¸Š
-echo  - ä»…ç¼“å­˜åœ¨å†…å­˜ä¸­ 120 ç§’, è·‘å®Œç«‹å³æ¸…ç©º
+echo  ÇëÊäÈë GitHub Personal Access Token (PAT)
+echo  - ÊäÈë²»»áÏÔÊ¾ÔÚÆÁÄ»ÉÏ
+echo  - ½ö»º´æÔÚÄÚ´æÖĞ 120 Ãë, ÅÜÍêÁ¢¼´Çå¿Õ
+echo  - È«¾ÖÆ¾¾İ¹ÜÀíÆ÷ GCM ÒÑ±»±¾½Å±¾ÁÙÊ±ÆÁ±Î
 echo ------------------------------------------------------------
 echo.
 
-for /f "delims=" %%p in ('powershell -NoProfile -Command "$sec = Read-Host -AsSecureString 'PAT'; $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec); $p = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b); [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b); Write-Output $p"') do set "PAT=%%p"
+set "PAT_TMP=%TEMP%\pat_main_%RANDOM%%RANDOM%.txt"
+powershell -NoProfile -Command "$sec = Read-Host -AsSecureString 'PAT'; $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec); $p = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b); [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b); Write-Output $p" > "%PAT_TMP%" 2>nul
+
+set "PAT="
+for /f "usebackq delims=" %%p in ("%PAT_TMP%") do set "PAT=%%p"
+del "%PAT_TMP%" 2>nul
 
 if not defined PAT (
-    echo [é”™è¯¯] æœªè¾“å…¥ PATï¼Œå·²å–æ¶ˆã€‚
-    pause
+    echo [´íÎó] Î´ÊäÈë PAT, ÒÑÈ¡Ïû¡£
     exit /b 1
 )
 
-:: æŠŠå‡­æ®äº¤ç»™ git credential cache å®ˆæŠ¤è¿›ç¨‹ (å†…å­˜)
 (
     echo protocol=https
     echo host=%HOST%
@@ -138,96 +257,86 @@ if not defined PAT (
 set "PAT="
 
 if errorlevel 1 (
-    echo [é”™è¯¯] å‡­æ®å†™å…¥å†…å­˜å¤±è´¥ã€‚
-    pause
+    echo [´íÎó] Æ¾¾İĞ´ÈëÄÚ´æÊ§°Ü¡£
     exit /b 1
 )
-echo [OK] PAT å·²ç¼“å­˜åˆ°å†…å­˜ã€‚
+echo [OK] PAT ÒÑ»º´æµ½ÄÚ´æ¡£
 
-:: ---------- 6. åˆ‡åˆ° dev ----------
 git show-ref --verify --quiet refs/heads/dev
 if errorlevel 1 (
-    echo [ä¿¡æ¯] æœ¬åœ°æ²¡æœ‰ dev åˆ†æ”¯ï¼Œå°è¯•ä» origin æ‹‰å–...
+    echo [ĞÅÏ¢] ±¾µØÃ»ÓĞ dev ·ÖÖ§, ³¢ÊÔ´Ó origin À­È¡...
     git fetch origin dev
     if errorlevel 1 (
-        echo [é”™è¯¯] æ— æ³•ä» origin è·å– dev åˆ†æ”¯ã€‚
-        pause
+        echo [´íÎó] ÎŞ·¨´Ó origin »ñÈ¡ dev ·ÖÖ§¡£
         exit /b 1
     )
     git checkout -b dev origin/dev
-    if errorlevel 1 (
-        echo [é”™è¯¯] åˆ›å»ºæœ¬åœ° dev åˆ†æ”¯å¤±è´¥ã€‚
-        pause
-        exit /b 1
-    )
 ) else (
     git checkout dev
     if errorlevel 1 (
-        echo [é”™è¯¯] åˆ‡æ¢åˆ° dev åˆ†æ”¯å¤±è´¥ã€‚
-        pause
+        echo [´íÎó] ÇĞ»»µ½ dev ·ÖÖ§Ê§°Ü¡£
         exit /b 1
     )
 )
 
-:: é¡ºæ‰‹åŒæ­¥ä¸€ä¸‹è¿œç«¯ dev, é¿å…è½å
-git pull --ff-only origin dev 2>nul
-if errorlevel 1 (
-    echo [è­¦å‘Š] git pull --ff-only æœªæˆåŠŸ(å¯èƒ½æ˜¯é¦–æ¬¡æ¨é€æˆ–å­˜åœ¨åˆ†å‰)ï¼Œç»§ç»­æ‰§è¡Œã€‚
-)
-
-:: ---------- 7. åˆå¹¶å½“å‰åˆ†æ”¯åˆ° dev ----------
 echo.
-echo [ä¿¡æ¯] æ­£åœ¨åˆå¹¶ %CURRENT% åˆ° dev ...
+echo [ĞÅÏ¢] ´Ó origin Í¬²½ dev, Ê¹ÓÃ rebase...
+git pull --rebase origin dev
+if errorlevel 1 (
+    echo.
+    echo [´íÎó] ÎŞ·¨Í¬²½Ô¶³Ì dev¡£
+    echo        ÇëÊÖ¶¯´¦Àí: git pull --rebase origin dev
+    exit /b 1
+)
+echo [OK] Í¬²½Íê³É¡£
+
+echo.
+echo [ĞÅÏ¢] ÕıÔÚºÏ²¢ %CURRENT% µ½ dev ...
 git merge --no-ff "%CURRENT%" -m "merge %CURRENT% into dev"
 if errorlevel 1 (
     echo.
-    echo [é”™è¯¯] åˆå¹¶å¤±è´¥ï¼Œå·²ä¸­æ­¢åˆå¹¶æ“ä½œã€‚
+    echo [´íÎó] ºÏ²¢Ê§°Ü, ÒÑÖĞÖ¹¡£
     git merge --abort 2>nul
     git checkout "%CURRENT%" 2>nul
-    pause
     exit /b 1
 )
-echo [OK] åˆå¹¶æˆåŠŸã€‚
+echo [OK] ºÏ²¢³É¹¦¡£
 
-:: ---------- 8. æ¨é€ dev åˆ° origin ----------
 echo.
-echo [ä¿¡æ¯] æ­£åœ¨æ¨é€ dev åˆ° origin ...
+echo [ĞÅÏ¢] ÕıÔÚÍÆËÍ dev µ½ origin ...
 git push origin dev
 if errorlevel 1 (
     echo.
-    echo [é”™è¯¯] æ¨é€å¤±è´¥ã€‚
-    pause
+    echo [´íÎó] ÍÆËÍÊ§°Ü¡£
     exit /b 1
 )
-echo [OK] æ¨é€æˆåŠŸã€‚
+echo [OK] ÍÆËÍ³É¹¦¡£
 
-:: ---------- 9. åˆ é™¤æœ¬åœ°ä¸´æ—¶åˆ†æ”¯ ----------
 echo.
-echo [ä¿¡æ¯] æ­£åœ¨åˆ é™¤æœ¬åœ°ä¸´æ—¶åˆ†æ”¯ %CURRENT% ...
+echo [ĞÅÏ¢] ÕıÔÚÉ¾³ı±¾µØÁÙÊ±·ÖÖ§ %CURRENT% ...
 git branch -d "%CURRENT%"
 if errorlevel 1 (
-    echo [è­¦å‘Š] å¸¸è§„åˆ é™¤å¤±è´¥ï¼Œå°è¯•å¼ºåˆ¶åˆ é™¤ ...
+    echo [¾¯¸æ] ³£¹æÉ¾³ıÊ§°Ü, ³¢ÊÔÇ¿ÖÆÉ¾³ı ...
     git branch -D "%CURRENT%"
     if errorlevel 1 (
-        echo [é”™è¯¯] åˆ é™¤åˆ†æ”¯ %CURRENT% å¤±è´¥ï¼Œè¯·æ‰‹åŠ¨å¤„ç†ã€‚
-        pause
+        echo [´íÎó] É¾³ı·ÖÖ§ %CURRENT% Ê§°Ü¡£
         exit /b 1
     )
 )
-echo [OK] åˆ†æ”¯ %CURRENT% å·²åˆ é™¤ã€‚
+echo [OK] ·ÖÖ§ %CURRENT% ÒÑÉ¾³ı¡£
 
-:: ---------- 10. ä¸»åŠ¨æ¸…ç©ºå†…å­˜ä¸­çš„ PAT ----------
 git credential-cache exit 2>nul
-echo [OK] PAT å·²ä»å†…å­˜æ¸…é™¤ã€‚
+echo [OK] PAT ÒÑ´ÓÄÚ´æÇå³ı¡£
 
-:: ---------- å®Œæˆ ----------
+del "%FAKE_GLOBAL%" 2>nul
+del "%FAKE_SYSTEM%" 2>nul
+
 echo.
 echo ============================================================
-echo   close å®Œæˆï¼
-echo   å½“å‰åˆ†æ”¯:
+echo   close Íê³É
+echo   µ±Ç°·ÖÖ§:
 git branch --show-current
 echo ============================================================
-echo.
 
-pause
 endlocal
+exit /b 0
