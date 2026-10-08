@@ -5,5 +5,8 @@
     // 为 bat 语言单独设置 GBK 编码
     "[bat]": {
         "files.encoding": "gbk"
-    }
+    },
+
+    // 不自动进入 venv
+    "python.terminal.activateEnvironment": false
 }
