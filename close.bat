@@ -12,6 +12,10 @@ setlocal enabledelayedexpansion
 
 cd /d "%~dp0"
 
+:: ---------- [修复] 兜底清理上次残留 ----------
+del /f /q "%TEMP%\git_cred_*.tmp" 2>nul
+del /f /q "%TEMP%\pat_*.txt" 2>nul
+
 if "%~1"=="?" goto :show_help
 if /i "%~1"=="-h" goto :show_help
 if /i "%~1"=="--help" goto :show_help
@@ -84,7 +88,7 @@ powershell -NoProfile -Command "$sec = Read-Host -AsSecureString 'PAT'; $b = [Ru
 
 set "LOCK_PAT="
 for /f "usebackq delims=" %%p in ("%PAT_TMP%") do set "LOCK_PAT=%%p"
-del "%PAT_TMP%" 2>nul
+del /f /q "%PAT_TMP%" 2>nul
 
 if not defined LOCK_PAT (
     echo [取消] 未输入。
@@ -181,6 +185,9 @@ if defined NO_MERGE (
     git branch --show-current
     echo ============================================================
     echo.
+    :: ---------- [修复] nomerge 也做一次兜底清理 ----------
+    del /f /q "%TEMP%\git_cred_*.tmp" 2>nul
+    del /f /q "%TEMP%\pat_*.txt" 2>nul
     endlocal
     exit /b 0
 )
@@ -236,7 +243,7 @@ powershell -NoProfile -Command "$sec = Read-Host -AsSecureString 'PAT'; $b = [Ru
 
 set "PAT="
 for /f "usebackq delims=" %%p in ("%PAT_TMP%") do set "PAT=%%p"
-del "%PAT_TMP%" 2>nul
+del /f /q "%PAT_TMP%" 2>nul
 
 if not defined PAT (
     echo [错误] 未输入 PAT, 已取消。
@@ -314,10 +321,20 @@ if errorlevel 1 (
 echo [OK] 分支 %CURRENT% 已删除。
 
 :cleanup
-del "%CRED_FILE%" 2>nul
+:: ---------- [修复] 清理顺序 + 加强删除 ----------
+:: 先移除 git 配置，防止 git 之后再写入这个文件
 git config --local --remove-section credential 2>nul
-del "%FAKE_GLOBAL%" 2>nul
-del "%FAKE_SYSTEM%" 2>nul
+
+:: 强制删除本次生成的凭据文件（PowerShell 兜底 + del 双重保险）
+powershell -NoProfile -Command "Remove-Item -LiteralPath '%CRED_FILE%' -Force -ErrorAction SilentlyContinue" 2>nul
+del /f /q "%CRED_FILE%" 2>nul
+
+:: 顺手扫一遍，清掉所有历史残留
+del /f /q "%TEMP%\git_cred_*.tmp" 2>nul
+del /f /q "%TEMP%\pat_*.txt" 2>nul
+
+del /f /q "%FAKE_GLOBAL%" 2>nul
+del /f /q "%FAKE_SYSTEM%" 2>nul
 
 echo.
 echo ============================================================
