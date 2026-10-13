@@ -152,6 +152,12 @@ git push origin dev
 
 **推送 GitHub 时请使用手机热点。**
 
+### 其余网络排查
+
+推 GitHub 超时或 SSL 报错时：
+1. 关掉梯子（SSL 证书错误大多是梯子中间人导致）
+2. 热点也超时的话可以用 `ipconfig /flushdns`
+
 ### VSCode 自动激活 venv 的关闭方法
 
 VSCode 打开终端时会自动检测 `.venv/` 并执行 activate，导致每次开新终端都出现 `(.venv)` 前缀。
