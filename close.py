@@ -266,7 +266,11 @@ def mode_default():
     print("[OK] 工作区干净。")
 
     fake_git_config()
-    run_git('config', '--local', '--remove-section', 'credential')
+    subprocess.call(
+        ['git', 'config', '--local', '--remove-section', 'credential'],
+        cwd=str(REPO_ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
 
     print()
     print("------------------------------------------------------------")
