@@ -7,6 +7,7 @@ goto :main
 
 :relocate
 set "CLOSE_RELOCATED=1"
+set "CLOSE_ORIG_DIR=%~dp0"
 set "SELF_TMP=%TEMP%\close_run.bat"
 copy /y "%~f0" "%SELF_TMP%" >nul
 call "%SELF_TMP%" %*
@@ -15,10 +16,9 @@ del /f /q "%SELF_TMP%" >nul 2>&1
 exit /b %RC%
 
 :main
-:: ---------- 以下是原有逻辑 ----------
+:: ---------- 以下是 close.bat 主体 ----------
 setlocal enabledelayedexpansion
 @REM chcp 65001 >nul
-:: ...（原 close.bat 剩余内容全部不动）
 
 :: ============================================================
 ::  close.bat — 关闭当前临时分支
