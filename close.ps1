@@ -4,10 +4,33 @@
 $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
+[Environment]::CurrentDirectory = $repoRoot
 
-$arg1 = if ($args.Count -ge 1) { $args[0] } else { '' }
+# ---------- 函数定义必须在调用之前 ----------
+function Cleanup {
+    git config --local --remove-section credential 2>$null
+    Remove-Item $credFile -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:TEMP\git_cred_*.tmp" -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:TEMP\pat_*.txt" -Force -ErrorAction SilentlyContinue
+    Remove-Item $fakeGlobal -Force -ErrorAction SilentlyContinue
+    Remove-Item $fakeSystem -Force -ErrorAction SilentlyContinue
+}
+
+function Show-Help {
+    Write-Host "============================================================"
+    Write-Host "  close - 关闭当前临时分支"
+    Write-Host "============================================================"
+    Write-Host ""
+    Write-Host "用法:"
+    Write-Host "  close.bat              默认: 合并到 dev + 推送 + 删除分支"
+    Write-Host "  close.bat -nomerge     危险: 直接删除分支, 未提交改动继承到 dev"
+    Write-Host "  close.bat ?            显示本帮助"
+    Write-Host ""
+}
 
 # ---------- 参数解析 ----------
+$arg1 = if ($args.Count -ge 1) { $args[0] } else { '' }
+
 if ($arg1 -eq '?' -or $arg1 -eq '-h' -or $arg1 -eq '--help') {
     Show-Help
     exit 0
@@ -104,13 +127,11 @@ if ($noMerge) {
 }
 
 # ---------- 默认模式 ----------
-# 检查仓库
 if (-not (Test-Path ".git")) {
     Write-Host "[错误] 当前目录不是 Git 仓库: $(Get-Location)"
     exit 1
 }
 
-# 检查 remote
 $remoteUrl = (git remote get-url origin 2>$null)
 if (-not $remoteUrl) {
     Write-Host "[错误] 没有找到 origin 远程。"
@@ -126,7 +147,6 @@ if (-not $remoteUrl.StartsWith('https://')) {
     exit 1
 }
 
-# 检查当前分支
 $current = (git branch --show-current).Trim()
 if (-not $current) {
     Write-Host "[错误] 当前处于 detached HEAD 状态。"
@@ -143,7 +163,6 @@ Write-Host "  当前分支: $current"
 Write-Host "============================================================"
 Write-Host ""
 
-# 脏检查
 $dirty = git status --porcelain
 if ($dirty) {
     Write-Host "[错误] 当前分支存在未提交的修改, 已拒绝 close。"
@@ -155,7 +174,6 @@ if ($dirty) {
 }
 Write-Host "[OK] 工作区干净。"
 
-# ---------- 屏蔽全局/系统 git 配置 ----------
 $gitUserName = (git config --global user.name 2>$null)
 $gitUserEmail = (git config --global user.email 2>$null)
 
@@ -171,12 +189,10 @@ Set-Content -Path $fakeSystem -Value "# empty" -Encoding ASCII
 $env:GIT_CONFIG_GLOBAL = $fakeGlobal
 $env:GIT_CONFIG_SYSTEM = $fakeSystem
 
-# ---------- credential-store + 临时文件 ----------
 git config --local --remove-section credential 2>$null
 $credFile = "$env:TEMP\git_cred_$([System.IO.Path]::GetRandomFileName()).tmp"
 git config --local --add credential.helper "store --file=$credFile"
 
-# 解析 host / username
 $host_ = $null
 $username = $null
 if ($remoteUrl -match '^https://([^/@]+)@([^/]+)/') {
@@ -213,7 +229,6 @@ Set-Content -Path $credFile -Value "https://${username}:${pat}@${host_}" -Encodi
 $pat = $null
 Write-Host "[OK] PAT 已暂存。"
 
-# ---------- 切到 dev ----------
 git show-ref --verify --quiet refs/heads/dev
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[信息] 本地没有 dev 分支, 尝试从 origin 拉取..."
@@ -298,25 +313,3 @@ Write-Host "============================================================"
 Write-Host ""
 
 exit 0
-
-
-function Cleanup {
-    git config --local --remove-section credential 2>$null
-    Remove-Item $credFile -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:TEMP\git_cred_*.tmp" -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:TEMP\pat_*.txt" -Force -ErrorAction SilentlyContinue
-    Remove-Item $fakeGlobal -Force -ErrorAction SilentlyContinue
-    Remove-Item $fakeSystem -Force -ErrorAction SilentlyContinue
-}
-
-function Show-Help {
-    Write-Host "============================================================"
-    Write-Host "  close - 关闭当前临时分支"
-    Write-Host "============================================================"
-    Write-Host ""
-    Write-Host "用法:"
-    Write-Host "  close.bat              默认: 合并到 dev + 推送 + 删除分支"
-    Write-Host "  close.bat -nomerge     危险: 直接删除分支, 未提交改动继承到 dev"
-    Write-Host "  close.bat ?            显示本帮助"
-    Write-Host ""
-}
