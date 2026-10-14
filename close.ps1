@@ -1,4 +1,4 @@
-# close.ps1 - 关闭当前临时分支
+﻿# close.ps1 - 关闭当前临时分支
 # 主逻辑放 PowerShell，防止 cmd 逐行读 bat 被 git checkout 替换导致错位
 
 $ErrorActionPreference = 'Continue'
