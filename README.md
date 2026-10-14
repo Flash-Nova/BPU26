@@ -84,14 +84,19 @@ close.bat ?            显示帮助
 - 工作区里**未提交的改动**会继承到 `dev`
 - 需要输入 `DELETE` 大写确认词 + PAT 二次锁
 
-### new_venv.bat / quit_venv.bat — 虚拟环境
+### venv.bat — 管理虚拟环境
 
 ```
-new_venv.bat     创建 .venv 并激活
-quit_venv.bat    退出 .venv
+call venv.bat start      创建（若不存在）并激活 .venv
+call venv.bat quit       退出当前 .venv
+venv.bat ?               显示帮助
 ```
 
 `.venv/` 已在 `.gitignore` 中。
+
+若使用 cmd 控制台，**必须用 `call` 调用**，否则激活只在子进程里生效，本终端看不到 `(.venv)` 前缀。
+
+vscode terminal 似乎不受影响
 
 ---
 
@@ -224,9 +229,8 @@ BPU26/
 ├── .gitignore
 ├── close.bat
 ├── execute.bat
-├── new_venv.bat
 ├── newb.bat
-├── quit_venv.bat
+└── venv.bat
 └── README.md
 ```
 
