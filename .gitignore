@@ -57,14 +57,12 @@ dkms.conf
 *.dwo
 
 
-
-## C++
-
-
-
 ## Python
 
 # venv
 .venv/
 __pycache__/
 *.exe
+
+# secret
+secret.json
