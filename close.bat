@@ -1,6 +1,24 @@
 @echo off
+
+:: ---------- 重定位: 把自己拷到 %TEMP% 再执行 ----------
+:: 目的: 防止 git checkout 替换本文件导致 cmd 读错位
+if not defined CLOSE_RELOCATED goto :relocate
+goto :main
+
+:relocate
+set "CLOSE_RELOCATED=1"
+set "SELF_TMP=%TEMP%\close_run.bat"
+copy /y "%~f0" "%SELF_TMP%" >nul
+call "%SELF_TMP%" %*
+set "RC=%ERRORLEVEL%"
+del /f /q "%SELF_TMP%" >nul 2>&1
+exit /b %RC%
+
+:main
+:: ---------- 以下是原有逻辑 ----------
 setlocal enabledelayedexpansion
 @REM chcp 65001 >nul
+:: ...（原 close.bat 剩余内容全部不动）
 
 :: ============================================================
 ::  close.bat — 关闭当前临时分支
