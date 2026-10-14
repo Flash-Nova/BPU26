@@ -9,8 +9,8 @@ from pathlib import Path
 
 if sys.platform == 'win32':
     try:
-        sys.stdout.reconfigure(encoding='gbk', errors='replace')
-        sys.stderr.reconfigure(encoding='gbk', errors='replace')
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
 
@@ -64,7 +64,11 @@ def line():
 
 
 def cleanup():
-    run_git('config', '--local', '--remove-section', 'credential')
+    subprocess.call(
+        ['git', 'config', '--local', '--remove-section', 'credential'],
+        cwd=str(REPO_ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
     for k in ('GIT_PAT', 'GIT_USERNAME', 'GIT_ASKPASS', 'GIT_ASKPASS_MARKER',
               'GIT_TERMINAL_PROMPT', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM'):
         os.environ.pop(k, None)
