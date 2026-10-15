@@ -64,5 +64,11 @@ dkms.conf
 __pycache__/
 *.exe
 
+
+## Other
+
 # secret
 secret.json
+
+# close pat
+.close_local_pat

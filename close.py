@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ctypes
 import getpass
 import glob
 import os
@@ -19,6 +20,200 @@ os.chdir(REPO_ROOT)
 
 FAKE_GLOBAL = None
 FAKE_SYSTEM = None
+
+# 本机免 PAT 输入: 标记文件 + Windows 凭据管理器
+MARKER_FILE = REPO_ROOT / '.close_local_pat'
+CRED_TARGET = 'BPU26_CLOSE_PAT'
+
+
+# ============================================================
+#  星号回显密码输入 (支持 Ctrl+V / 右键粘贴)
+# ============================================================
+def _read_clipboard():
+    """读 Windows 剪贴板文本, 失败返回 None"""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        user32.OpenClipboard.argtypes = [wintypes.HWND]
+        user32.OpenClipboard.restype = wintypes.BOOL
+        user32.GetClipboardData.argtypes = [wintypes.UINT]
+        user32.GetClipboardData.restype = wintypes.HANDLE
+        kernel32.GlobalLock.argtypes = [wintypes.HANDLE]
+        kernel32.GlobalLock.restype = wintypes.LPVOID
+        kernel32.GlobalUnlock.argtypes = [wintypes.HANDLE]
+        if not user32.OpenClipboard(None):
+            return None
+        try:
+            h = user32.GetClipboardData(13)  # CF_UNICODETEXT
+            if not h:
+                return None
+            p = kernel32.GlobalLock(h)
+            if not p:
+                return None
+            try:
+                return ctypes.wstring_at(p)
+            finally:
+                kernel32.GlobalUnlock(h)
+        finally:
+            user32.CloseClipboard()
+    except Exception:
+        return None
+
+
+def masked_input(prompt):
+    """回显星号的密码输入。支持退格、Ctrl+V 粘贴、控制台右键粘贴。
+    非 Windows 或无 msvcrt 时退回 getpass。"""
+    if sys.platform != 'win32':
+        return getpass.getpass(prompt)
+    try:
+        import msvcrt
+    except ImportError:
+        return getpass.getpass(prompt)
+
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    buf = []
+
+    def echo_backspace():
+        if buf:
+            buf.pop()
+            sys.stdout.write('\b \b')
+            sys.stdout.flush()
+
+    def echo_char(c):
+        buf.append(c)
+        sys.stdout.write('*')
+        sys.stdout.flush()
+
+    while True:
+        ch = msvcrt.getwch()
+        if ch in ('\r', '\n'):
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+            break
+        if ch == '\x03':  # Ctrl+C
+            sys.stdout.write('\n')
+            raise KeyboardInterrupt
+        if ch in ('\x08', '\x7f'):  # 退格 / Delete
+            echo_backspace()
+            continue
+        if ch == '\x16':  # Ctrl+V 粘贴
+            text = _read_clipboard()
+            if text:
+                for c in text:
+                    if c in ('\r', '\n'):  # 只取第一行
+                        break
+                    if c in ('\x08', '\x7f'):
+                        echo_backspace()
+                    else:
+                        echo_char(c)
+            continue
+        if ch in ('\x00', '\xe0'):  # 功能键前缀, 吃掉第二个字符
+            msvcrt.getwch()
+            continue
+        echo_char(ch)
+    return ''.join(buf)
+
+
+# ============================================================
+#  Windows 凭据管理器 (本地安全存储)
+# ============================================================
+_CRED_TYPE_GENERIC = 1
+_CRED_PERSIST_LOCAL_MACHINE = 2
+
+
+def _cred_api():
+    import ctypes
+    from ctypes import wintypes
+
+    class FILETIME(ctypes.Structure):
+        _fields_ = [("dwLowDateTime", wintypes.DWORD),
+                    ("dwHighDateTime", wintypes.DWORD)]
+
+    class CREDENTIALW(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_byte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+
+    advapi32 = ctypes.windll.advapi32
+    advapi32.CredReadW.restype = wintypes.BOOL
+    advapi32.CredReadW.argtypes = [
+        wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+        ctypes.POINTER(ctypes.POINTER(CREDENTIALW))]
+    advapi32.CredWriteW.restype = wintypes.BOOL
+    advapi32.CredWriteW.argtypes = [ctypes.POINTER(CREDENTIALW), wintypes.DWORD]
+    advapi32.CredFree.argtypes = [ctypes.c_void_p]
+    return advapi32, CREDENTIALW
+
+
+def cred_read(target=CRED_TARGET):
+    """从凭据管理器读 PAT, 不存在/失败返回 None"""
+    if sys.platform != 'win32':
+        return None
+    try:
+        advapi32, CREDENTIALW = _cred_api()
+        ptr = ctypes.POINTER(CREDENTIALW)()
+        if not advapi32.CredReadW(target, _CRED_TYPE_GENERIC, 0, ctypes.byref(ptr)):
+            return None
+        try:
+            cred = ptr.contents
+            if cred.CredentialBlobSize == 0 or not cred.CredentialBlob:
+                return None
+            blob = ctypes.string_at(cred.CredentialBlob, cred.CredentialBlobSize)
+            return blob.decode('utf-8', errors='replace')
+        finally:
+            advapi32.CredFree(ctypes.cast(ptr, ctypes.c_void_p))
+    except Exception:
+        return None
+
+
+def cred_write(secret, target=CRED_TARGET, username='git'):
+    """把 PAT 写入凭据管理器"""
+    if sys.platform != 'win32':
+        return False
+    try:
+        import ctypes
+        advapi32, CREDENTIALW = _cred_api()
+        blob = secret.encode('utf-8')
+        buf = ctypes.create_string_buffer(blob, len(blob))
+        cred = CREDENTIALW()
+        cred.Flags = 0
+        cred.Type = _CRED_TYPE_GENERIC
+        cred.TargetName = target
+        cred.Comment = 'BPU26 close.bat PAT'
+        cred.CredentialBlobSize = len(blob)
+        cred.CredentialBlob = ctypes.cast(buf, ctypes.POINTER(ctypes.c_byte))
+        cred.Persist = _CRED_PERSIST_LOCAL_MACHINE
+        cred.AttributeCount = 0
+        cred.Attributes = None
+        cred.TargetAlias = None
+        cred.UserName = username
+        return bool(advapi32.CredWriteW(ctypes.byref(cred), 0))
+    except Exception:
+        return False
+
+
+def is_local_machine():
+    """标记文件存在且内容 == 本机用户名"""
+    try:
+        first_line = MARKER_FILE.read_text(encoding='utf-8').splitlines()[0].strip()
+    except Exception:
+        return False
+    local_user = os.environ.get('USERNAME', '')
+    return bool(local_user) and first_line.lower() == local_user.lower()
 
 
 # ============================================================
@@ -92,6 +287,16 @@ def show_help():
     print("  close.bat -h           显示本帮助")
     print("  close.bat --help       显示本帮助")
     print()
+    print("PAT 输入:")
+    print("  - 星号回显, 支持 Ctrl+V / 右键粘贴")
+    print("  - 只存内存环境变量, 不落地任何文件")
+    print()
+    print("本机免 PAT 输入 (一次性配置):")
+    print("  1. 在仓库根目录创建 .close_local_pat, 内容为本机 Windows 用户名")
+    print("  2. 首次 close 时按提示把 PAT 存入 Windows 凭据管理器")
+    print("  3. 之后 close 自动读取, 不再手动输入")
+    print("  (注意: 把 .close_local_pat 加进 .gitignore)")
+    print()
 
 
 def setup_askpass(pat):
@@ -150,6 +355,47 @@ def sweep_temp():
                 os.remove(f)
             except OSError:
                 pass
+
+
+def prompt_pat():
+    """引导用户输入 PAT。本机标记命中且有存储时直接返回, 不再询问。"""
+    if is_local_machine():
+        pat = cred_read()
+        if pat:
+            print(f"[OK] 检测到本机标记 ({MARKER_FILE.name}), "
+                  "已从 Windows 凭据管理器读取 PAT, 免输入。")
+            return pat
+        print(f"[信息] 检测到本机标记, 但凭据管理器中尚未存储 PAT。")
+
+    print()
+    print("------------------------------------------------------------")
+    print("  请输入 GitHub Personal Access Token (PAT)")
+    print("  - 输入会回显为星号 (*), 按回车确认")
+    print("  - 支持 Ctrl+V 或终端右键粘贴")
+    print("  - 只存内存环境变量, 不落地任何文件")
+    print("  - 全局凭据管理器 GCM 已被本脚本临时屏蔽")
+    print("------------------------------------------------------------")
+    print()
+
+    pat = masked_input('PAT: ')
+    if not pat:
+        print("[错误] 未输入 PAT, 已取消。")
+        return None
+
+    # 本机标记命中但还没存 -> 提示存入凭据管理器, 下次免输入
+    if is_local_machine() and not cred_read():
+        try:
+            ans = input("是否把 PAT 存入 Windows 凭据管理器, 以后本机免输入? [y/N]: ")
+        except (EOFError, KeyboardInterrupt):
+            ans = ''
+        if ans.strip().lower() == 'y':
+            if cred_write(pat):
+                print("[OK] 已存入 Windows 凭据管理器。")
+            else:
+                print("[警告] 存储失败, 下次仍需手动输入。")
+        else:
+            print("[信息] 未保存, 下次仍需手动输入。")
+    return pat
 
 
 def mode_nomerge():
@@ -272,18 +518,14 @@ def mode_default():
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL)
 
-    print()
-    print("------------------------------------------------------------")
-    print("  请输入 GitHub Personal Access Token (PAT)")
-    print("  - 输入不会显示在屏幕上")
-    print("  - 只存内存环境变量, 不落地任何文件")
-    print("  - 全局凭据管理器 GCM 已被本脚本临时屏蔽")
-    print("------------------------------------------------------------")
-    print()
-
-    pat = getpass.getpass('PAT: ')
+    try:
+        pat = prompt_pat()
+    except KeyboardInterrupt:
+        print()
+        print("[取消] 用户中断。")
+        cleanup()
+        return 1
     if not pat:
-        print("[错误] 未输入 PAT, 已取消。")
         cleanup()
         return 1
 
