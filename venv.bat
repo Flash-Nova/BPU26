@@ -1,11 +1,11 @@
 @echo off
-chcp 65001 >nul
+@REM chcp 65001 >nul
 
 :: ============================================================
-::  venv.bat - è™šæ‹Ÿç¯å¢ƒç®¡ç†
+::  venv.bat - ĞéÄâ»·¾³¹ÜÀí
 :: ============================================================
 
-:: ---------- quit æ”¾åœ¨ setlocal ä¹‹å‰ï¼Œdeactivate æ‰èƒ½ç”Ÿæ•ˆ ----------
+:: ---------- quit ·ÅÔÚ setlocal Ö®Ç°£¬deactivate ²ÅÄÜÉúĞ§ ----------
 if /i "%~1"=="quit" goto :mode_quit
 
 setlocal
@@ -24,12 +24,12 @@ if /i "%~1"=="start" goto :mode_init
 if /i "%~1"=="req" goto :mode_req
 
 if not exist "%VENV_SCRIPTS%\python.exe" (
-    echo [é”™è¯¯] æœªæ‰¾åˆ° .venv
-    echo        è¯·å…ˆæ‰§è¡Œ: venv.bat init
+    echo [´íÎó] Î´ÕÒµ½ .venv
+    echo        ÇëÏÈÖ´ĞĞ: venv.bat init
     exit /b 1
 )
 
-:: å‘½ä»¤ä»£ç†: ä¸´æ—¶æŠŠ venv\Scripts æ”¾ PATH æœ€å‰
+:: ÃüÁî´úÀí: ÁÙÊ±°Ñ venv\Scripts ·Å PATH ×îÇ°
 set "PATH=%VENV_SCRIPTS%;%PATH%"
 %*
 
@@ -37,39 +37,39 @@ exit /b %ERRORLEVEL%
 
 :show_help
 echo ============================================================
-echo   venv.bat - è™šæ‹Ÿç¯å¢ƒç®¡ç†
+echo   venv.bat - ĞéÄâ»·¾³¹ÜÀí
 echo ============================================================
 echo.
-echo ç”¨æ³•:
-echo   venv.bat init              åˆ›å»º .venvï¼ˆè‹¥å·²å­˜åœ¨åˆ™è·³è¿‡ï¼‰
-echo   venv.bat quit              é€€å‡ºå½“å‰ shell çš„ venv æ¿€æ´»
-echo   venv.bat req save          å¯¼å‡ºä¾èµ–åˆ° requirements.txt
-echo   venv.bat req load          ä» requirements.txt å®‰è£…ä¾èµ–
-echo   venv.bat pip install xxx   åœ¨ venv é‡Œè·‘ pip
-echo   venv.bat python xxx.py     åœ¨ venv é‡Œè·‘ python
-echo   venv.bat ?                 æ˜¾ç¤ºæœ¬å¸®åŠ©
+echo ÓÃ·¨:
+echo   venv.bat init              ´´½¨ .venv£¨ÈôÒÑ´æÔÚÔòÌø¹ı£©
+echo   venv.bat quit              ÍË³öµ±Ç° shell µÄ venv ¼¤»î
+echo   venv.bat req save          µ¼³öÒÀÀµµ½ requirements.txt
+echo   venv.bat req load          ´Ó requirements.txt °²×°ÒÀÀµ
+echo   venv.bat pip install xxx   ÔÚ venv ÀïÅÜ pip
+echo   venv.bat python xxx.py     ÔÚ venv ÀïÅÜ python
+echo   venv.bat ?                 ÏÔÊ¾±¾°ïÖú
 echo.
 pause
 exit /b 0
 
 :mode_init
 if exist "%VENV_SCRIPTS%\python.exe" (
-    echo [ä¿¡æ¯] .venv å·²å­˜åœ¨, è·³è¿‡åˆ›å»ºã€‚
+    echo [ĞÅÏ¢] .venv ÒÑ´æÔÚ, Ìø¹ı´´½¨¡£
     exit /b 0
 )
-echo [ä¿¡æ¯] æ­£åœ¨åˆ›å»º .venv...
+echo [ĞÅÏ¢] ÕıÔÚ´´½¨ .venv...
 py -m venv "%VENV_DIR%"
 if errorlevel 1 (
-    echo [é”™è¯¯] åˆ›å»º .venv å¤±è´¥ã€‚
+    echo [´íÎó] ´´½¨ .venv Ê§°Ü¡£
     exit /b 1
 )
-echo [OK] .venv åˆ›å»ºå®Œæˆã€‚
+echo [OK] .venv ´´½¨Íê³É¡£
 exit /b 0
 
 :mode_req
 if not exist "%VENV_SCRIPTS%\python.exe" (
-    echo [é”™è¯¯] æœªæ‰¾åˆ° .venv
-    echo        è¯·å…ˆæ‰§è¡Œ: venv.bat init
+    echo [´íÎó] Î´ÕÒµ½ .venv
+    echo        ÇëÏÈÖ´ĞĞ: venv.bat init
     exit /b 1
 )
 set "PATH=%VENV_SCRIPTS%;%PATH%"
@@ -77,37 +77,37 @@ set "PATH=%VENV_SCRIPTS%;%PATH%"
 if /i "%~2"=="save" (
     python -m pip freeze > "%REQ_FILE%"
     if errorlevel 1 (
-        echo [é”™è¯¯] å¯¼å‡ºå¤±è´¥ã€‚
+        echo [´íÎó] µ¼³öÊ§°Ü¡£
         exit /b 1
     )
-    echo [OK] å·²å¯¼å‡º: requirements.txt
+    echo [OK] ÒÑµ¼³ö: requirements.txt
     exit /b 0
 )
 
 if /i "%~2"=="load" (
     if not exist "%REQ_FILE%" (
-        echo [é”™è¯¯] æœªæ‰¾åˆ° requirements.txt
+        echo [´íÎó] Î´ÕÒµ½ requirements.txt
         exit /b 1
     )
     pip install -r "%REQ_FILE%"
     if errorlevel 1 (
-        echo [é”™è¯¯] å®‰è£…ä¾èµ–å¤±è´¥ã€‚
+        echo [´íÎó] °²×°ÒÀÀµÊ§°Ü¡£
         exit /b 1
     )
-    echo [OK] ä¾èµ–å®‰è£…å®Œæˆã€‚
+    echo [OK] ÒÀÀµ°²×°Íê³É¡£
     exit /b 0
 )
 
-echo [é”™è¯¯] req éœ€è¦ save æˆ– load å‚æ•°
-echo ç”¨æ³•: venv.bat req save ^| venv.bat req load
+echo [´íÎó] req ĞèÒª save »ò load ²ÎÊı
+echo ÓÃ·¨: venv.bat req save ^| venv.bat req load
 exit /b 1
 
 :mode_quit
 set "VENV_SCRIPTS=%~dp0.venv\Scripts"
 if not exist "%VENV_SCRIPTS%\deactivate.bat" (
-    echo [é”™è¯¯] æœªæ‰¾åˆ° .venv\Scripts\deactivate.bat
+    echo [´íÎó] Î´ÕÒµ½ .venv\Scripts\deactivate.bat
     exit /b 1
 )
 call "%VENV_SCRIPTS%\deactivate.bat"
-echo [OK] å·²é€€å‡º venvã€‚
+echo [OK] ÒÑÍË³ö venv¡£
 exit /b 0

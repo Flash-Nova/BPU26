@@ -14,6 +14,19 @@ if sys.platform == 'win32':
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
+    
+def set_console_codepage(cp: int):
+    """Windows API 设置当前控制台输入/输出代码页，等价 chcp 命令"""
+    if sys.platform != "win32":
+        return
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleCP.argtypes = (ctypes.wintypes.UINT,)
+    kernel32.SetConsoleOutputCP.argtypes = (ctypes.wintypes.UINT,)
+    kernel32.SetConsoleCP.restype = ctypes.wintypes.BOOL
+    kernel32.SetConsoleOutputCP.restype = ctypes.wintypes.BOOL
+    kernel32.SetConsoleCP(cp)
+    kernel32.SetConsoleOutputCP(cp)
+
 
 REPO_ROOT = Path(__file__).resolve().parent
 os.chdir(REPO_ROOT)
@@ -604,28 +617,35 @@ def mode_default():
 #  入口
 # ============================================================
 def main():
-    # askpass 分支（被 git 回调）
-    if len(sys.argv) >= 2 and sys.argv[1] == '--askpass':
-        return handle_askpass()
+    ret = 1
+    try:
+        # askpass 分支（被 git 回调）
+        if len(sys.argv) >= 2 and sys.argv[1] == '--askpass':
+            return handle_askpass()
 
-    arg1 = sys.argv[1] if len(sys.argv) >= 2 else ''
+        arg1 = sys.argv[1] if len(sys.argv) >= 2 else ''
 
-    if arg1 in ('?', '-h', '--help'):
-        show_help()
-        return 0
+        if arg1 in ('?', '-h', '--help'):
+            show_help()
+            return 0
 
-    if arg1 not in ('', '-nomerge'):
-        print(f"[错误] 未知参数: {arg1}")
-        show_help()
-        return 1
+        if arg1 not in ('', '-nomerge'):
+            print(f"[错误] 未知参数: {arg1}")
+            show_help()
+            return 1
 
-    sweep_temp()
+        sweep_temp()
 
-    if arg1 == '-nomerge':
-        return mode_nomerge()
-    else:
-        return mode_default()
-
+        if arg1 == '-nomerge':
+            return mode_nomerge()
+        else:
+            return mode_default()
+        
+    finally:
+        # askpass 回调进程不要执行设置代码页！会破坏git认证
+        if sys.platform == "win32" and not (len(sys.argv)>=2 and sys.argv[1] == '--askpass'):
+            set_console_codepage(936)
+    return ret
 
 if __name__ == '__main__':
     sys.exit(main())
