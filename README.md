@@ -14,7 +14,7 @@ C 语言 & AI 课程笔记仓库。每天一个临时分支，事后合并到 `d
 - C 语言课堂上的分支是 `-c`
 - 人工智能课堂上的分支是 `-ai`
 - 其他时段的分支暂定为 `-other`
-- 自定义任务分支用 `-custom`（见 newb.bat）
+- 自定义任务分支用 `-custom`（见 newb）
 
 例如：`2026 年 9 月 29 日` C 语言课上的分支为 `20260929-c`。
 
@@ -28,12 +28,12 @@ C 语言 & AI 课程笔记仓库。每天一个临时分支，事后合并到 `d
 
 ## 二、脚本说明 Scripts
 
-### newb.bat — 创建今日分支
+### newb — 创建今日分支
 
 ```
-newb.bat                   按日期+课型创建分支
-newb.bat -custom <name>    创建自定义名字的分支
-newb.bat ?                 显示帮助
+newb                   按日期+课型创建分支
+newb -custom <name>    创建自定义名字的分支
+newb ?                 显示帮助
 ```
 
 默认行为：
@@ -45,13 +45,13 @@ newb.bat ?                 显示帮助
 3. 创建同名目录 `date/<分支名>`
 4. 若 `dev` 上有未提交改动，会随新分支一起带过去
 
-### execute.bat — 编译 / 运行
+### execute — 编译 / 运行
 
 ```
-execute.bat <name>              全仓库搜索 <name> 的源文件
-execute.bat <name> -d <dir>     只在指定目录下搜索
-execute.bat <name> -f           强制重新编译（跳过时间戳检查）
-execute.bat ?                   显示帮助
+execute <name>              全仓库搜索 <name> 的源文件
+execute <name> -d <dir>     只在指定目录下搜索
+execute <name> -f           强制重新编译（跳过时间戳检查）
+execute ?                   显示帮助
 ```
 
 行为：
@@ -62,12 +62,12 @@ execute.bat ?                   显示帮助
 - `.py` 优先使用根目录 `.venv`，否则用系统 python
 - 编译 C/C++ 时加 `-fexec-charset=GBK`，让源文件中的中文在 cmd 正常显示
 
-### close.bat — 关闭当前分支
+### close — 关闭当前分支
 
 ```
-close.bat              合并到 dev + 推送 + 删除分支
-close.bat -nomerge     直接删除分支，不合并（危险）
-close.bat ?            显示帮助
+close              合并到 dev + 推送 + 删除分支
+close -nomerge     直接删除分支，不合并（危险）
+close ?            显示帮助
 ```
 
 默认流程：
@@ -81,7 +81,7 @@ close.bat ?            显示帮助
 
 本机免 PAT 输入（一次性配置）：
 1. 仓库根目录创建 `.close_local_pat`，内容为本机 Windows 用户名
-2. 首次 `close.bat` 时按提示把 PAT 存入 Windows 凭据管理器
+2. 首次 `close` 时按提示把 PAT 存入 Windows 凭据管理器
 3. 之后自动读取，不再手动输入
 4. `.close_local_pat` 必须加进 `.gitignore`，不进版本库
 
@@ -90,19 +90,21 @@ close.bat ?            显示帮助
 - 工作区里**未提交的改动**会继承到 `dev`
 - 需要输入 `DELETE` 大写确认词 + PAT 二次锁
 
-### venv.bat — 管理虚拟环境
+### venv — 管理虚拟环境（命令代理）
 
 ```
-call venv.bat start      创建（若不存在）并激活 .venv
-call venv.bat quit       退出当前 .venv
-venv.bat ?               显示帮助
+venv init              创建 .venv（若已存在则跳过）
+venv quit              退出当前 shell 的 venv 激活
+venv req save          导出依赖到 requirements.txt
+venv req load          从 requirements.txt 安装依赖
+venv pip install xxx   在 venv 里跑 pip
+venv python xxx.py     在 venv 里跑 python
+venv ?                 显示帮助
 ```
 
 `.venv/` 已在 `.gitignore` 中。
 
-若使用 cmd 控制台，**必须用 `call` 调用**，否则激活只在子进程里生效，本终端看不到 `(.venv)` 前缀。
-
-vscode terminal 似乎不受影响
+**无需 `call`**。该脚本采用命令代理模式，临时把 venv 环境注入当前进程运行命令，退出后不污染宿主机环境。
 
 ---
 
@@ -110,43 +112,52 @@ vscode terminal 似乎不受影响
 
 ### 一次完整的课程循环
 
-1. `newb.bat` → 创建今日分支（如 `20261008-c`）
+1. `newb` → 创建今日分支（如 `20261008-c`）
 2. 在 `date/<分支名>/` 下写代码、记笔记
-3. `execute.bat <文件名>` → 编译/运行验证
+3. `execute <文件名>` → 编译/运行验证
 4. `git add . && git commit -m "..."`
-5. `close.bat` → 合并到 dev + 推送 GitHub
+5. `close` → 合并到 dev + 推送 GitHub
 
 ### 特殊任务
 
 ```
-newb.bat -custom test01        → 建 test01 实验分支
+newb -custom test01        → 建 test01 实验分支
 （...干活...）
-close.bat                      → 正常合并到 dev
+close                      → 正常合并到 dev
 ```
 
 ### 只想删分支，不想合并
 
 ```
-close.bat -nomerge             → 直接删分支，未提交改动继承到 dev
+close -nomerge             → 直接删分支，未提交改动继承到 dev
 ```
 
 ### 只在某个目录里找文件
 
 ```
-execute.bat hw -d date\20260929-c
+execute hw -d date\20260929-c
 ```
 
 ---
 
 ## 四、注意事项 Notes
 
+### 🔧 将 VSCode 默认终端设置为 CMD (重要)
+
+为了确保脚本正常运行，避免 PowerShell 环境变量继承问题，请在 VSCode 中按以下步骤操作：
+
+1. 打开 VSCode。
+2. 按下快捷键 `Ctrl + Shift + P` 打开命令面板。
+3. 在搜索框中输入 `Terminal: Select Default Profile` 并回车。
+4. 在弹出的列表中选择 `Command Prompt`。
+
 ### ⚠️ 基础构筑工具必须在 dev 分支上修改
 
-**`newb.bat`、`close.bat`、`execute.bat`、`new_venv.bat`、`quit_venv.bat`、`.gitignore`、`.vscode/`、`README.md` 等属于"基础构筑"，必须在 `dev` 分支上修改并提交。**
+**`newb.bat`、`close.bat`、`execute.bat`、`venv.bat`、`.gitignore`、`.vscode/`、`README.md` 等属于"基础构筑"，必须在 `dev` 分支上修改并提交。**
 
 原因：
 - 这些是所有分支共用的工具，不属于任何一天的作业
-- 如果在临时分支上修改，`close.bat` 执行 `git checkout dev` 时，**磁盘上的脚本会被 git 换成 dev 版本**
+- 如果在临时分支上修改，`close` 执行 `git checkout dev` 时，**磁盘上的脚本会被 git 换成 dev 版本**
 - Windows cmd 执行 bat 时，如果文件被中途修改，会导致执行混乱甚至中断
 
 正确做法：
@@ -183,7 +194,7 @@ VSCode 打开终端时会自动检测 `.venv/` 并执行 activate，导致每次
 
 保存后**关掉所有终端重新打开**，前缀消失。
 
-需要时手动激活：`.venv\Scripts\activate`，或跑 `new_venv.bat`。
+需要时直接跑 `venv python xxx.py`。
 
 ### 编码约定
 
@@ -193,8 +204,8 @@ VSCode 打开终端时会自动检测 `.venv/` 并执行 activate，导致每次
 
 ### PAT 使用
 
-- `close.bat` 需要输入 GitHub Personal Access Token (PAT)
-- PAT 仅暂存于 `%TEMP%` 下的临时文件，脚本结束时立即删除
+- `close` 需要输入 GitHub Personal Access Token (PAT)
+- PAT 仅暂存于内存环境变量，脚本结束时立即清除
 - 建议使用 fine-grained token，只授权 `Contents: Read and write`，限定本仓库
 - PAT 保存位置：语雀私密文档（已开启二次验证）
 
@@ -234,9 +245,10 @@ BPU26/
 │   └── README.md             说明各版本产物
 ├── .gitignore
 ├── close.bat
+├── close.py
 ├── execute.bat
 ├── newb.bat
-└── venv.bat
+├── venv.bat
 └── README.md
 ```
 
@@ -254,7 +266,7 @@ BPU26/
 | `*.c` / `*.cpp` | C / C++ 源代码 |
 | `*.py` | Python 脚本 |
 | `note.md` | 课堂笔记（Markdown 格式） |
-| `note.src.md` | 笔记源文件（含 `@include` / `@run` 占位符，见 TODO） |
+| `note.src.md` | 笔记源文件（含 `@src` / `@exe` 占位符，见 TODO） |
 | `Makefile` | 多文件项目时的构建脚本（可选） |
 | `*.exe` | 编译产物（git 忽略） |
 
@@ -295,8 +307,12 @@ BPU26/
 
 ### P1：近期
 
-- [ ] **close.bat：pull 失败时中止**
-  当前 `git pull --rebase origin dev` 失败会直接 exit，但要检查所有 pull 分支是否一致处理。
+- [ ] **sync-notes 工具**
+  - 目的：自动把代码 + 运行结果同步进 note.md，避免手动复制
+  - 语法：`note.src.md` 中用 `<!-- @src: file.c -->` 和 `<!-- @exe: name -->`
+  - 工具展开后生成 `note.md`
+  - 调用链：`close → sync-notes → execute`
+  - 失败策略：任何一个 `@exe` 编译失败，整体中止，不写入 note.md（原子性）
 
 ### P2：下次做
 
@@ -306,36 +322,25 @@ BPU26/
   - 功能：一键部署环境 + clone 仓库 / 一键清理（删仓库 + 敏感文件，保留通用工具）
   - 代码位置：`tools/repo-tool/`
   - 产物位置：`release/`，exe 本体 gitignore
-  - 部署场景：Win7 32 位机房（校园网、可能无管理员权限、可能禁 USB）
-  - 兼容策略：U 盘带离线包，不依赖联网
+  - 部署场景：Win7 32 位机房（校园网、可能无管理员权限、无 U 盘）
+  - 兼容策略：考虑到无 U 盘，需要实现在线下载，并包含“临时 PAT 与部署仓库本体在关机/下次启动时自动销毁”的逻辑。
 
-- [ ] **execute.bat 支持多文件项目**
+- [ ] **execute 支持多文件项目**
   - 判定依据：目标文件所在目录是否存在 Makefile
   - 有 Makefile → 调 `make run`（约定 Makefile 里定义 run 目标）
   - 无 Makefile → 现有 gcc/g++ 单文件逻辑
-  - 已知不足：多文件但未写 Makefile 的项目会被误判为单文件，后续再优化特征判定
-
-- [ ] **sync-notes 工具**
-  - 目的：自动把代码 + 运行结果同步进 note.md，避免手动复制
-  - 语法：`note.src.md` 中用 `<!-- @include: file.c -->` 和 `<!-- @run: name -->`
-  - 工具展开后生成 `note.md`
-  - 调用链：`close.bat → sync-notes.bat → execute.bat`
-  - 失败策略：任何一个 `@run` 编译失败，整体中止，不写入 note.md（原子性）
-  - 预留参数：`--no-run`（暂不实现，遇到时报错退出）
-
-- [x] **close.py：PAT 输入提示优化** ✅ 2026-10-15（星号回显，支持 Ctrl+V / 右键粘贴）
-- [x] **close.py：本机免 PAT 检测** ✅ 2026-10-15（`.close_local_pat` 标记 + Windows 凭据管理器）
 
 ### P3：远期
 
 - [ ] **close 的二维码传 PAT 方案**
   - 其他机器扫二维码一次性获取 PAT，供一节课使用，全自动
   - 思路：本机起临时服务 → 生成含一次性 token 的二维码 → 扫码下发 → 课后自动失效
-  - 校园网/机房环境限制需先评估
+
+- [ ] **脚本输出 ANSI 颜色**
+  - 提升交互体验（需兼容 Win7 的 cmd）。
 
 - [ ] 补全历史项目的 README
-- [ ] 考虑 sync-notes 的缓存优化（时间戳判断，避免每次重跑）
 
 ---
 
-_最后更新：2026-10-15_
+_最后更新：2026-10-18_
