@@ -63,11 +63,12 @@ execute ?                   显示帮助
 - 编译 C/C++ 时加 `-fexec-charset=GBK`，让源文件中的中文在 cmd 正常显示
 - 运行 Python 时自动注入 `PYTHONPATH=%REPO_ROOT%`，方便在子目录中直接 `import ai_method`，用法详见 [ai_method 接口说明](ai_method/ai.md)
 
-### close — 关闭当前分支
+### close — 关闭当前分支 / 推送 dev
 
 ```
 close              合并到 dev + 推送 + 删除分支
 close -nomerge     直接删除分支，不合并（危险）
+close -pushdev     直接推送当前所在的 dev 分支
 close ?            显示帮助
 ```
 

@@ -14,7 +14,7 @@ if sys.platform == 'win32':
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
-    
+
 def set_console_codepage(cp: int):
     """Windows API 设置当前控制台输入/输出代码页，等价 chcp 命令"""
     if sys.platform != "win32":
@@ -290,25 +290,18 @@ def cleanup():
 
 def show_help():
     line()
-    print("  close - 关闭当前临时分支")
+    print("  close - 关闭当前临时分支 / 推送 dev")
     line()
     print()
     print("用法:")
     print("  close.bat              默认: 合并到 dev + 推送 + 删除分支")
     print("  close.bat -nomerge     危险: 直接删除分支, 未提交改动继承到 dev")
+    print("  close.bat -pushdev     直接推送当前 dev 分支 (不合并)")
     print("  close.bat ?            显示本帮助")
-    print("  close.bat -h           显示本帮助")
-    print("  close.bat --help       显示本帮助")
     print()
     print("PAT 输入:")
     print("  - 星号回显, 支持 Ctrl+V / 右键粘贴")
     print("  - 只存内存环境变量, 不落地任何文件")
-    print()
-    print("本机免 PAT 输入 (一次性配置):")
-    print("  1. 在仓库根目录创建 .close_local_pat, 内容为本机 Windows 用户名")
-    print("  2. 首次 close 时按提示把 PAT 存入 Windows 凭据管理器")
-    print("  3. 之后 close 自动读取, 不再手动输入")
-    print("  (注意: 把 .close_local_pat 加进 .gitignore)")
     print()
 
 
@@ -472,6 +465,53 @@ def mode_nomerge():
     line()
     return 0
 
+def mode_pushdev():
+    if not os.path.exists('.git'):
+        print(f"[错误] 当前目录不是 Git 仓库: {os.getcwd()}")
+        return 1
+
+    cur = current_branch()
+    if cur != 'dev':
+        print(f"[错误] 当前分支是 {cur}, 请先切换到 dev 分支再推送。")
+        return 1
+
+    print("[信息] 准备推送 dev 分支...")
+    
+    fake_git_config()
+    subprocess.call(
+        ['git', 'config', '--local', '--remove-section', 'credential'],
+        cwd=str(REPO_ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
+
+    try:
+        pat = prompt_pat()
+    except KeyboardInterrupt:
+        print("\n[取消] 用户中断。")
+        cleanup()
+        return 1
+        
+    if not pat:
+        cleanup()
+        return 1
+
+    setup_askpass(pat)
+    pat = None
+    print("[OK] PAT 已注入内存环境变量。")
+
+    print("\n[信息] 正在推送 dev 到 origin ...")
+    if run_git('push', 'origin', 'dev') != 0:
+        print("\n[错误] 推送失败。")
+        cleanup()
+        return 1
+    print("[OK] 推送成功。")
+
+    cleanup()
+    print("\n============================================================")
+    print("  pushdev 完成")
+    print("============================================================")
+    return 0
+
 
 def mode_default():
     if not os.path.exists('.git'):
@@ -629,7 +669,7 @@ def main():
             show_help()
             return 0
 
-        if arg1 not in ('', '-nomerge'):
+        if arg1 not in ('', '-nomerge', '-pushdev'):
             print(f"[错误] 未知参数: {arg1}")
             show_help()
             return 1
@@ -638,6 +678,8 @@ def main():
 
         if arg1 == '-nomerge':
             return mode_nomerge()
+        elif arg1 == '-pushdev':
+            return mode_pushdev()
         else:
             return mode_default()
         

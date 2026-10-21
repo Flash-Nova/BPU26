@@ -104,13 +104,28 @@ if /i not "!CURBR!"=="dev" (
     )
 )
 
-:: 同步 dev
+:: 同步 dev (强行绕过 GCM)
 echo [信息] 从 origin 同步 dev...
-git pull --ff-only origin dev 2>nul
+set "GIT_TERMINAL_PROMPT=0"
+set "GIT_ASKPASS=%~dp0close.bat"
+set "GIT_ASKPASS_MARKER=1"
+
+:: 如果本机配置了 PAT，从凭据管理器读出来注入环境变量（通过调用 close.py 的内部方法）
+for /f "usebackq delims=" %%p in (`py -c "import ai_method.utils; import os; os.chdir(r'%~dp0'); import sys; sys.path.insert(0, r'%~dp0'); from close import cred_read; print(cred_read() or '')" 2^>nul`) do set "GIT_PAT=%%p"
+set "GIT_USERNAME=git"
+
+git pull --ff-only origin dev
 if errorlevel 1 (
-    echo [警告] 无法快进同步远程 dev ^(可能无网络或本地 dev 分叉^)
-    echo        继续基于本地 dev 开新分支
+    echo [警告] 无法同步远程 dev, 使用本地最新状态继续开分支。
 )
+
+:: 清理临时环境变量
+set "GIT_PAT="
+set "GIT_USERNAME="
+set "GIT_ASKPASS="
+set "GIT_ASKPASS_MARKER="
+set "GIT_TERMINAL_PROMPT="
+
 
 :: 自定义模式: BRANCH 已就绪, 直接开
 if /i "!MODE!"=="custom" (
