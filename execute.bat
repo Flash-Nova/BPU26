@@ -225,6 +225,8 @@ if exist "%REPO_ROOT%.venv\Scripts\python.exe" (
 )
 echo [INFO] 运行 !TARGET!
 echo ------------------------------------------------------------
+:: 把仓库根目录加入 PYTHONPATH，让 ai_method 随处可用
+set "PYTHONPATH=%REPO_ROOT%"
 "!PYTHON!" "!TARGET!"
 set "RC=!ERRORLEVEL!"
 echo.
