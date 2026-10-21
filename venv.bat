@@ -1,12 +1,12 @@
 @echo off
-@REM chcp 65001 >nul
 
 :: ============================================================
 ::  venv.bat - 虚拟环境管理
 :: ============================================================
 
-:: ---------- quit 放在 setlocal 之前，deactivate 才能生效 ----------
+:: ---------- 需要影响父级 shell 环境的命令，必须放在 setlocal 之前 ----------
 if /i "%~1"=="quit" goto :mode_quit
+if /i "%~1"=="init" goto :mode_init
 
 setlocal
 
@@ -19,8 +19,6 @@ if "%~1"=="" goto :show_help
 if "%~1"=="?" goto :show_help
 if /i "%~1"=="-h" goto :show_help
 if /i "%~1"=="--help" goto :show_help
-if /i "%~1"=="init" goto :mode_init
-if /i "%~1"=="start" goto :mode_init
 if /i "%~1"=="req" goto :mode_req
 
 if not exist "%VENV_SCRIPTS%\python.exe" (
@@ -41,29 +39,18 @@ echo   venv.bat - 虚拟环境管理
 echo ============================================================
 echo.
 echo 用法:
-echo   venv.bat init              创建 .venv（若已存在则跳过）
+echo   venv.bat init              创建（若不存在）并激活 .venv 环境
 echo   venv.bat quit              退出当前 shell 的 venv 激活
 echo   venv.bat req save          导出依赖到 requirements.txt
 echo   venv.bat req load          从 requirements.txt 安装依赖
-echo   venv.bat pip install xxx   在 venv 里跑 pip
-echo   venv.bat python xxx.py     在 venv 里跑 python
+echo   venv.bat pip install xxx   在 venv 里跑 pip（无需激活）
+echo   venv.bat python xxx.py     在 venv 里跑 python（无需激活）
 echo   venv.bat ?                 显示本帮助
 echo.
+echo 注意: 日常执行命令请直接使用命令代理模式 (venv pip / venv python)。
+echo       若需在当前窗口显示 (.venv) 前缀，请手动执行 .venv\Scripts\activate。
+echo.
 pause
-exit /b 0
-
-:mode_init
-if exist "%VENV_SCRIPTS%\python.exe" (
-    echo [信息] .venv 已存在, 跳过创建。
-    exit /b 0
-)
-echo [信息] 正在创建 .venv...
-py -m venv "%VENV_DIR%"
-if errorlevel 1 (
-    echo [错误] 创建 .venv 失败。
-    exit /b 1
-)
-echo [OK] .venv 创建完成。
 exit /b 0
 
 :mode_req
@@ -101,6 +88,26 @@ if /i "%~2"=="load" (
 echo [错误] req 需要 save 或 load 参数
 echo 用法: venv.bat req save ^| venv.bat req load
 exit /b 1
+
+:: ============================================================
+::  以下部分不使用 setlocal
+:: ============================================================
+:mode_init
+set "VENV_DIR=%~dp0.venv"
+if not exist "%VENV_DIR%\Scripts\python.exe" (
+    echo [信息] 未找到 .venv, 正在创建...
+    py -m venv "%VENV_DIR%"
+    if errorlevel 1 (
+        echo [错误] 创建 .venv 失败。
+        exit /b 1
+    )
+    echo [OK] .venv 创建完成。
+) else (
+    echo [信息] .venv 已存在。
+)
+call "%VENV_DIR%\Scripts\activate.bat"
+echo [OK] .venv 准备就绪。
+exit /b 0
 
 :mode_quit
 set "VENV_SCRIPTS=%~dp0.venv\Scripts"

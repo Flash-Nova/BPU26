@@ -90,21 +90,22 @@ close ?            显示帮助
 - 工作区里**未提交的改动**会继承到 `dev`
 - 需要输入 `DELETE` 大写确认词 + PAT 二次锁
 
-### venv — 管理虚拟环境（命令代理）
+### venv — 管理虚拟环境
 
 ```
-venv init              创建 .venv（若已存在则跳过）
+venv init              创建（若不存在）并激活 .venv 环境
 venv quit              退出当前 shell 的 venv 激活
 venv req save          导出依赖到 requirements.txt
 venv req load          从 requirements.txt 安装依赖
-venv pip install xxx   在 venv 里跑 pip
-venv python xxx.py     在 venv 里跑 python
+venv pip install xxx   在 venv 里跑 pip（无需激活）
+venv python xxx.py     在 venv 里跑 python（无需激活）
 venv ?                 显示帮助
 ```
 
 `.venv/` 已在 `.gitignore` 中。
 
-**无需 `call`**。该脚本采用命令代理模式，临时把 venv 环境注入当前进程运行命令，退出后不污染宿主机环境。
+**⚠️ 重要提示：**
+日常跑代码或装包，推荐直接使用**命令代理模式**（如 `venv pip`、`venv python`），此模式无需激活环境。如果你需要让终端前缀出现 `(.venv)`，请手动执行 `.venv\Scripts\activate`（因为 CMD 机制限制，直接运行 bat 无法将环境变量继承到当前窗口）。
 
 ---
 
