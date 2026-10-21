@@ -61,6 +61,7 @@ execute ?                   显示帮助
 - `.c` 用 gcc，`.cpp` 用 g++
 - `.py` 优先使用根目录 `.venv`，否则用系统 python
 - 编译 C/C++ 时加 `-fexec-charset=GBK`，让源文件中的中文在 cmd 正常显示
+- 运行 Python 时自动注入 `PYTHONPATH=%REPO_ROOT%`，方便在子目录中直接 `import ai_method`，用法详见 [ai_method 接口说明](ai_method/ai.md)
 
 ### close — 关闭当前分支
 
@@ -218,32 +219,30 @@ VSCode 打开终端时会自动检测 `.venv/` 并执行 activate，导致每次
 BPU26/
 ├── .venv/                    Python 虚拟环境（git 忽略）
 ├── .vscode/                  VS Code 工作区配置
+├── ai_method/                自研 AI 工具封装库
+│   ├── ai.md                 接口说明
+│   ├── utils.py              核心工具集（读取配置、获取 Client、文件选择等）
+│   └── _secrets_/            存放密钥
+│       ├── loader.py         配置读取器
+│       └── secret.json       实际 API Key 配置文件（git 忽略）
 ├── date/                     按日期归档的课堂记录
-│   ├── 20260929-c/           2026-09-29 C 语言课
-│   │   ├── first.c           第一段代码
-│   │   ├── hw.c              课后作业
+│   ├── 20261020-c/           2026-10-20 C 语言课
 │   │   ├── note.md           课堂笔记
+│   │   ├── float_to_int.c    课堂代码
+│   │   ├── float_to_int.exe  编译产物（git 忽略）
 │   │   └── ...
-│   ├── 20260930-ai/          2026-09-30 AI 课
+│   ├── 20261021-ai/          2026-10-21 AI 课
 │   │   ├── note.md           课堂笔记
-│   │   └── ...               （未来：Python 脚本等）
-│   ├── 20261008-c/           2026-10-08 C 语言课
-│   │   ├── basic_format_char.c
-│   │   ├── basic_format_float.c
-│   │   ├── basic_format_int.c
-│   │   ├── print_2_num.c
-│   │   └── note.md
+│   │   ├── study.py          AI 识别业务代码
+│   │   └── ...
 │   ├── ...
 │   └── <yyyyMMdd>-<type>/    后续按此格式递增
+│       ├── note.md           每日笔记
 │       ├── *.c / *.cpp       C / C++ 源代码
 │       ├── *.py              Python 脚本
-│       ├── note.md           课堂笔记
-│       ├── Makefile          多文件项目时可选用
 │       └── ...
-├── tools/                    自研工具源码
-│   └── repo-tool/            部署工具（见 TODO）
-├── release/                  正式版产物索引（exe 本体 gitignore）
-│   └── README.md             说明各版本产物
+├── tools/                    自研底层工具源码（如 repo-tool）
+├── release/                  正式版产物索引
 ├── .gitignore
 ├── close.bat
 ├── close.py
@@ -252,6 +251,21 @@ BPU26/
 ├── venv.bat
 └── README.md
 ```
+
+### 目录与文件说明
+
+**1. `date/` 目录**
+- 目录名 = 分支名，形如 `<yyyyMMdd>-<type>`（`c` 代表 C 语言，`ai` 代表人工智能，`other` 代表其他）。
+- 每天一个目录，里面存放当天的 `note.md`、源代码（`.c` / `.py`）、以及相关产物。不仅记录笔记，也记录随堂练习代码。
+
+**2. `ai_method/` 模块**
+- 为了提升代码复用性（DRY 原则）而自研封装的 Python 工具库。
+- `utils.py` 中封装了系统原生文件选择器（`pick_file`）、百度 AI 客户端实例化（`get_baidu_client`）、文件二进制读取（`get_file_content`）和 JSON 格式化输出（`print_json`）。
+- 业务代码（如 `date/20261021-ai/study.py`）只需 `import ai_method.utils as ai` 即可极简调用。
+- `_secrets_/` 用于安全隔离密钥，已在 `.gitignore` 中屏蔽，绝不污染版本库。
+
+**3. 脚本**
+- 根目录下的 `.bat` 与 `.py` 脚本为自动化基础设施，详细用法见上文“脚本说明”。
 
 ### 目录命名规则
 
