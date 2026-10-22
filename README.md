@@ -324,11 +324,15 @@ BPU26/
 ### P1：近期
 
 - [ ] **sync-notes 工具**
-  - 目的：自动把代码 + 运行结果同步进 note.md，避免手动复制
-  - 语法：`note.src.md` 中用 `<!-- @src: file.c -->` 和 `<!-- @exe: name -->`
-  - 工具展开后生成 `note.md`
-  - 调用链：`close → sync-notes → execute`
-  - 失败策略：任何一个 `@exe` 编译失败，整体中止，不写入 note.md（原子性）
+  - 目的：提交前（如 close 时）自动把代码和运行结果注入到 `note.md`，替代手动复制。
+  - **触发机制**：不生成 `note.src.md`，直接操作 `note.md`。对比 `note.md` 的 LastWriteTime 和 Git 的上次 commit 时间，若修改过才启动扫描解析。
+  - **实现语言**：Python 脚本。
+  - **语法约定**：
+    - `@src <name>`：自动寻找 `<name>.c`（或 .cpp/.py）并嵌入源码。
+    - `@exe <name>`：自动编译运行 `<name>`，并在后续行接收**若干行输入样例**，最后捕获运行结果输出。
+    - `@end`：作为块结束标识（待定，需找一个不易冲突的结束符）。
+  - 调用链：`close → sync-notes (Python) → execute`
+  - 失败策略：任何一个 `@exe` 编译失败，整体中止，不写入文件（原子性）。
 
 ### P2：下次做
 
